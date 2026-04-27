@@ -7,8 +7,9 @@ type ApiHealthResponse = {
 
 async function getApiHealth(): Promise<ApiHealthResponse | null> {
   try {
+    const apiUrl = process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL;
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/`,
+      `${apiUrl}/`,
       {
         cache: 'no-store',
       }
