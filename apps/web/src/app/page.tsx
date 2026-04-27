@@ -9,7 +9,7 @@ async function getApiHealth(): Promise<ApiHealthResponse | null> {
   try {
     const apiUrl =
       process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL;
-    const response = await fetch(`${apiUrl}/`, {
+    const response = await fetch(`${apiUrl}/api/v1/health`, {
       cache: 'no-store',
     });
 
