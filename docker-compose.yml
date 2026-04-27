@@ -1,4 +1,4 @@
-version: "3.9"
+version: '3.9'
 
 services:
   web:
@@ -7,7 +7,7 @@ services:
       dockerfile: apps/web/Dockerfile
     container_name: smart-tracker-web
     ports:
-      - "3000:3000"
+      - '3000:3000'
     volumes:
       - .:/app
       - /app/node_modules
@@ -25,7 +25,7 @@ services:
       dockerfile: apps/api/Dockerfile
     container_name: smart-tracker-api
     ports:
-      - "3001:3001"
+      - '3001:3001'
     volumes:
       - .:/app
       - /app/node_modules
@@ -43,7 +43,7 @@ services:
     container_name: smart-tracker-postgres
     restart: unless-stopped
     ports:
-      - "5432:5432"
+      - '5432:5432'
     environment:
       POSTGRES_DB: smart_tracker
       POSTGRES_USER: postgres
@@ -56,7 +56,7 @@ services:
     container_name: smart-tracker-redis
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      - '6379:6379'
     volumes:
       - redis_data:/data
 

@@ -7,13 +7,11 @@ type ApiHealthResponse = {
 
 async function getApiHealth(): Promise<ApiHealthResponse | null> {
   try {
-    const apiUrl = process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL;
-    const response = await fetch(
-      `${apiUrl}/`,
-      {
-        cache: 'no-store',
-      }
-    );
+    const apiUrl =
+      process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL;
+    const response = await fetch(`${apiUrl}/`, {
+      cache: 'no-store',
+    });
 
     if (!response.ok) {
       throw new Error(`Failed to fetch API: ${response.status}`);
@@ -38,21 +36,27 @@ export default async function Home() {
         </p>
 
         <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-lg">
-          <h2 className="text-2xl font-semibold mb-4">Backend Connection Test</h2>
+          <h2 className="text-2xl font-semibold mb-4">
+            Backend Connection Test
+          </h2>
 
           {apiHealth ? (
             <div className="space-y-2 text-slate-200">
               <p>
-                <span className="font-semibold">API Name:</span> {apiHealth.name}
+                <span className="font-semibold">API Name:</span>{' '}
+                {apiHealth.name}
               </p>
               <p>
-                <span className="font-semibold">Status:</span> {apiHealth.status}
+                <span className="font-semibold">Status:</span>{' '}
+                {apiHealth.status}
               </p>
               <p>
-                <span className="font-semibold">Version:</span> {apiHealth.version}
+                <span className="font-semibold">Version:</span>{' '}
+                {apiHealth.version}
               </p>
               <p>
-                <span className="font-semibold">Timestamp:</span> {apiHealth.timestamp}
+                <span className="font-semibold">Timestamp:</span>{' '}
+                {apiHealth.timestamp}
               </p>
             </div>
           ) : (

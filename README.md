@@ -19,5 +19,7 @@ Smart Tracker is a full-stack monorepo project for tracking orders, tasks, and i
 ## Run locally
 
 ### Install
+
 ```bash
 npm install
+```
