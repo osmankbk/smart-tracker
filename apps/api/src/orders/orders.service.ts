@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 
-import { CreateOrderDto } from './dto/create-order.dto';
+import { CreateOrderDto, OrderPriority } from './dto/create-order.dto';
 
 export type OrderStatus = 'OPEN' | 'IN_PROGRESS' | 'DONE';
 
@@ -8,7 +8,7 @@ export type Order = {
   id: string;
   title: string;
   description?: string;
-  priority: string;
+  priority: OrderPriority;
   status: OrderStatus;
   createdAt: string;
 };

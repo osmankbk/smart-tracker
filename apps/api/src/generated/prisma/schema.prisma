@@ -1,0 +1,57 @@
+generator client {
+  provider     = "prisma-client-js"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  MEMBER
+}
+
+enum OrderStatus {
+  OPEN
+  IN_PROGRESS
+  DONE
+  CANCELED
+}
+
+enum OrderPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  role      UserRole @default(MEMBER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  assignedOrders Order[] @relation("AssignedOrders")
+  createdOrders  Order[] @relation("CreatedOrders")
+}
+
+model Order {
+  id          String        @id @default(cuid())
+  title       String
+  description String?
+  status      OrderStatus   @default(OPEN)
+  priority    OrderPriority @default(MEDIUM)
+
+  assigneeId  String?
+  createdById String?
+
+  assignee  User? @relation("AssignedOrders", fields: [assigneeId], references: [id])
+  createdBy User? @relation("CreatedOrders", fields: [createdById], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
