@@ -1,14 +1,9 @@
-import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
-
-export enum OrderPriority {
-  LOW = 'LOW',
-  MEDIUM = 'MEDIUM',
-  HIGH = 'HIGH',
-}
+import { OrderPriority } from '@prisma/client';
+import { IsEnum, IsOptional, IsString, IsNotEmpty } from 'class-validator';
 
 export class CreateOrderDto {
-  @IsNotEmpty()
   @IsString()
+  @IsNotEmpty()
   title: string;
 
   @IsOptional()
@@ -17,4 +12,12 @@ export class CreateOrderDto {
 
   @IsEnum(OrderPriority)
   priority: OrderPriority;
+
+  @IsOptional()
+  @IsString()
+  assigneeId?: string;
+
+  @IsOptional()
+  @IsString()
+  createdById?: string;
 }

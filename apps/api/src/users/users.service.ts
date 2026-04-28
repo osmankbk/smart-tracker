@@ -1,30 +1,24 @@
 import { Injectable } from '@nestjs/common';
 
-export type UserRole = 'ADMIN' | 'MANAGER' | 'MEMBER';
+import { PrismaService } from '../prisma/prisma.service';
 
-export type User = {
-  id: string;
-  name: string;
-  email: string;
-  role: UserRole;
-};
+export type UserRole = 'ADMIN' | 'MANAGER' | 'MEMBER';
 
 @Injectable()
 export class UsersService {
-  private readonly users: User[] = [
-    {
-      id: 'user_1',
-      name: 'Admin Demo',
-      email: 'admin@smattracker.dev',
-      role: 'ADMIN',
-    },
-  ];
+  constructor(private readonly prisma: PrismaService) {}
 
   findAll() {
-    return this.users;
+    return this.prisma.user.findMany({
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
   }
 
   findById(id: string) {
-    return this.users.find((user) => user.id === id);
+    return this.prisma.user.findUnique({
+      where: { id },
+    });
   }
 }

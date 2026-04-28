@@ -1,36 +1,30 @@
 import { Injectable } from '@nestjs/common';
 
-import { CreateOrderDto, OrderPriority } from './dto/create-order.dto';
-
-export type OrderStatus = 'OPEN' | 'IN_PROGRESS' | 'DONE';
-
-export type Order = {
-  id: string;
-  title: string;
-  description?: string;
-  priority: OrderPriority;
-  status: OrderStatus;
-  createdAt: string;
-};
-
+import { PrismaService } from '../prisma/prisma.service';
+import { CreateOrderDto } from './dto/create-order.dto';
 @Injectable()
 export class OrdersService {
-  private readonly orders: Order[] = [];
+  constructor(private readonly prisma: PrismaService) {}
 
   findAll() {
-    return this.orders;
+    return this.prisma.order.findMany({
+      include: {
+        assignee: true,
+        createdBy: true,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
   }
 
   create(createOrderDto: CreateOrderDto) {
-    const order: Order = {
-      id: `order_${Date.now()}`,
-      ...createOrderDto,
-      status: 'OPEN',
-      createdAt: new Date().toISOString(),
-    };
-
-    this.orders.push(order);
-
-    return order;
+    return this.prisma.order.create({
+      data: createOrderDto,
+      include: {
+        assignee: true,
+        createdBy: true,
+      },
+    });
   }
 }
