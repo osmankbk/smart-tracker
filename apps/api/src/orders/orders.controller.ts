@@ -1,45 +1,53 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
-  Post,
   Param,
   Patch,
-  Delete,
+  Post,
+  UseGuards,
 } from '@nestjs/common';
-import { OrdersService } from './orders.service';
+
+import * as currentUserDecorator from '../auth/decorators/current-user.decorator';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
+import { OrdersService } from './orders.service';
 
 @Controller({
   path: 'orders',
   version: '1',
 })
 export class OrdersController {
-  constructor(private readonly orderService: OrdersService) {}
+  constructor(private readonly ordersService: OrdersService) {}
 
   @Get()
   findAll() {
-    return this.orderService.findAll();
-  }
-
-  @Post()
-  create(@Body() createOrderDto: CreateOrderDto) {
-    return this.orderService.create(createOrderDto);
+    return this.ordersService.findAll();
   }
 
   @Get(':id')
   findById(@Param('id') id: string) {
-    return this.orderService.findById(id);
+    return this.ordersService.findById(id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post()
+  create(
+    @Body() createOrderDto: CreateOrderDto,
+    @currentUserDecorator.CurrentUser() user: currentUserDecorator.AuthUser,
+  ) {
+    return this.ordersService.create(createOrderDto, user.id);
   }
 
   @Patch(':id')
   update(@Param('id') id: string, @Body() updateOrderDto: UpdateOrderDto) {
-    return this.orderService.update(id, updateOrderDto);
+    return this.ordersService.update(id, updateOrderDto);
   }
 
   @Delete(':id')
   cancel(@Param('id') id: string) {
-    return this.orderService.cancel(id);
+    return this.ordersService.cancel(id);
   }
 }

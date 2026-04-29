@@ -16,8 +16,4 @@ export class CreateOrderDto {
   @IsOptional()
   @IsString()
   assigneeId?: string;
-
-  @IsOptional()
-  @IsString()
-  createdById?: string;
 }

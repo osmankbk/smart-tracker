@@ -23,9 +23,12 @@ export class OrdersService {
     });
   }
 
-  create(createOrderDto: CreateOrderDto) {
+  create(createOrderDto: CreateOrderDto, createdById: string) {
     return this.prisma.order.create({
-      data: createOrderDto,
+      data: {
+        ...createOrderDto,
+        createdById,
+      },
       include: {
         assignee: true,
         createdBy: true,
