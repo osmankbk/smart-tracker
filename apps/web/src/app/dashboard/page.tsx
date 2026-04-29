@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 
 import { getCurrentUser, logout } from '@/lib/auth';
 import type { AuthUser } from '@/types/auth';
+import Link from 'next/link';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -59,13 +60,21 @@ export default function DashboardPage() {
             </p>
           </div>
 
-          <button
-            onClick={handleLogout}
+          <div className="flex gap-3">
+            <Link
+            href="/orders"
             className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-medium text-slate-200 hover:bg-slate-900"
-            type="button"
-          >
-            Log out
-          </button>
+            >
+              Orders
+            </Link>
+            <button
+              onClick={handleLogout}
+              className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-medium text-slate-200 hover:bg-slate-900"
+              type="button"
+            >
+              Log out
+            </button>
+          </div>
         </div>
 
         <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">

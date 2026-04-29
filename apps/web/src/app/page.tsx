@@ -69,6 +69,12 @@ export default async function Home() {
           >
             Dashboard
           </Link>
+          <Link
+            href="/orders"
+            className="rounded-lg border border-slate-700 px-5 py-3 font-semibold text-slate-200 hover:bg-slate-900"
+          >
+            Orders
+          </Link>
         </div>
 
         <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
