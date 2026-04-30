@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { OrderPriority, OrderStatus } from '@prisma/client';
 
+import { PrismaService } from '../prisma/prisma.service';
+
+import { DashboardIntelligence } from './types/dashboard-intelligence.type';
 import { OrderIntelligence, RiskLevel } from './types/order-intelligence.type';
 
 type ActivityLogLike = {
@@ -22,6 +25,137 @@ const HOURS = 1000 * 60 * 60;
 
 @Injectable()
 export class IntelligenceService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async getDashboardBrief(_userId: string): Promise<DashboardIntelligence> {
+    const orders = await this.prisma.order.findMany({
+      include: {
+        activityLogs: true,
+      },
+      orderBy: {
+        updatedAt: 'desc',
+      },
+    });
+
+    const analyzedOrders = orders.map((order) => ({
+      id: order.id,
+      title: order.title,
+      status: order.status,
+      priority: order.priority,
+      createdAt: order.createdAt.toISOString(),
+      updatedAt: order.updatedAt.toISOString(),
+      intelligence: this.analyzeOrder(order),
+    }));
+
+    const stuckOrders = analyzedOrders.filter(
+      (order) => order.intelligence.isStuck,
+    );
+
+    const highRiskOrders = analyzedOrders.filter((order) =>
+      ['HIGH', 'CRITICAL'].includes(order.intelligence.riskLevel),
+    );
+
+    const criticalRiskOrders = analyzedOrders.filter(
+      (order) => order.intelligence.riskLevel === 'CRITICAL',
+    );
+
+    const focusOrders = analyzedOrders
+      .filter(
+        (order) =>
+          order.intelligence.isStuck ||
+          ['HIGH', 'CRITICAL'].includes(order.intelligence.riskLevel),
+      )
+      .sort((a, b) => b.intelligence.riskScore - a.intelligence.riskScore)
+      .slice(0, 5);
+
+    return {
+      generatedAt: new Date().toISOString(),
+      summary: this.buildBriefSummary({
+        totalOrders: analyzedOrders.length,
+        stuckOrders: stuckOrders.length,
+        highRiskOrders: highRiskOrders.length,
+        criticalRiskOrders: criticalRiskOrders.length,
+      }),
+      metrics: {
+        totalOrders: analyzedOrders.length,
+        openOrders: analyzedOrders.filter((order) => order.status === 'OPEN')
+          .length,
+        inProgressOrders: analyzedOrders.filter(
+          (order) => order.status === 'IN_PROGRESS',
+        ).length,
+        doneOrders: analyzedOrders.filter((order) => order.status === 'DONE')
+          .length,
+        canceledOrders: analyzedOrders.filter(
+          (order) => order.status === 'CANCELED',
+        ).length,
+        stuckOrders: stuckOrders.length,
+        highRiskOrders: highRiskOrders.length,
+        criticalRiskOrders: criticalRiskOrders.length,
+      },
+      focusOrders,
+      recommendedActions: this.buildDashboardRecommendations({
+        stuckOrders: stuckOrders.length,
+        highRiskOrders: highRiskOrders.length,
+        criticalRiskOrders: criticalRiskOrders.length,
+      }),
+    };
+  }
+
+  private buildBriefSummary(input: {
+    totalOrders: number;
+    stuckOrders: number;
+    highRiskOrders: number;
+    criticalRiskOrders: number;
+  }) {
+    if (input.totalOrders === 0) {
+      return 'No active operational work is currently being tracked.';
+    }
+
+    if (input.criticalRiskOrders > 0) {
+      return `${input.criticalRiskOrders} critical-risk order(s) need immediate attention.`;
+    }
+
+    if (input.highRiskOrders > 0) {
+      return `${input.highRiskOrders} high-risk order(s) should be reviewed today.`;
+    }
+
+    if (input.stuckOrders > 0) {
+      return `${input.stuckOrders} stuck order(s) may need follow-up.`;
+    }
+
+    return 'No major operational risks detected right now.';
+  }
+
+  private buildDashboardRecommendations(input: {
+    stuckOrders: number;
+    highRiskOrders: number;
+    criticalRiskOrders: number;
+  }) {
+    const actions: string[] = [];
+
+    if (input.criticalRiskOrders > 0) {
+      actions.push('Review critical-risk orders before handling routine work.');
+    }
+
+    if (input.highRiskOrders > 0) {
+      actions.push(
+        'Check high-risk orders for blockers, ownership, or escalation needs.',
+      );
+    }
+
+    if (input.stuckOrders > 0) {
+      actions.push('Review stuck orders and confirm the next required action.');
+    }
+
+    if (actions.length === 0) {
+      actions.push(
+        'Continue monitoring normal workflow and keep statuses updated.',
+      );
+    }
+
+    return actions;
+  }
+
   analyzeOrder(order: OrderLike): OrderIntelligence {
     const sortedLogs = [...order.activityLogs].sort(
       (a, b) => a.createdAt.getTime() - b.createdAt.getTime(),

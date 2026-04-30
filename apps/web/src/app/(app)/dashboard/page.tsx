@@ -1,41 +1,165 @@
 'use client';
 
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
+
 import { useAuth } from '@/hooks/use-auth';
+import { getDashboardBrief } from '@/lib/intelligence';
+import type { DashboardIntelligence } from '@/types/order';
 
 export default function DashboardPage() {
   const { user } = useAuth();
+
+  const [brief, setBrief] = useState<DashboardIntelligence | null>(null);
+  const [isLoadingBrief, setIsLoadingBrief] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    async function loadBrief() {
+      try {
+        const dashboardBrief = await getDashboardBrief();
+        setBrief(dashboardBrief);
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : 'Failed to load intelligence brief',
+        );
+      } finally {
+        setIsLoadingBrief(false);
+      }
+    }
+
+    loadBrief();
+  }, []);
 
   return (
     <div>
       <div className="mb-8">
         <p className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-400">
-          Dashboard
+          Intelligence Brief
         </p>
-        <h1 className="text-3xl font-bold">Welcome back</h1>
+        <h1 className="text-3xl font-bold">What matters today?</h1>
         <p className="mt-2 text-slate-400">
-          Track operational work, ownership, and progress from one workspace.
+          Smart Tracker highlights operational risk, stuck work, and recommended
+          next actions.
         </p>
       </div>
 
-      <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-        <h2 className="mb-4 text-xl font-semibold">Current User</h2>
+      {user ? (
+        <div className="mb-6 rounded-xl border border-slate-800 bg-slate-900 px-4 py-3 text-sm text-slate-300">
+          Signed in as <span className="font-semibold text-white">{user.email}</span>
+        </div>
+      ) : null}
 
-        {user ? (
-          <div className="space-y-2 text-slate-300">
-            <p>
-              <span className="font-semibold text-white">ID:</span> {user.id}
+      {error ? (
+        <div className="mb-6 rounded-xl border border-red-800 bg-red-950 px-4 py-3 text-sm text-red-300">
+          {error}
+        </div>
+      ) : null}
+
+      {isLoadingBrief ? (
+        <p className="text-slate-400">Loading intelligence brief...</p>
+      ) : brief ? (
+        <div className="space-y-8">
+          <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+            <p className="mb-2 text-sm text-slate-500">
+              Generated {new Date(brief.generatedAt).toLocaleString()}
             </p>
-            <p>
-              <span className="font-semibold text-white">Email:</span>{' '}
-              {user.email}
-            </p>
-            <p>
-              <span className="font-semibold text-white">Role:</span>{' '}
-              {user.role}
-            </p>
-          </div>
-        ) : null}
-      </section>
+            <h2 className="text-2xl font-semibold">{brief.summary}</h2>
+          </section>
+
+          <section className="grid gap-4 md:grid-cols-4">
+            <MetricCard label="Total" value={brief.metrics.totalOrders} />
+            <MetricCard label="Stuck" value={brief.metrics.stuckOrders} />
+            <MetricCard label="High Risk" value={brief.metrics.highRiskOrders} />
+            <MetricCard
+              label="Critical"
+              value={brief.metrics.criticalRiskOrders}
+            />
+          </section>
+
+          <section className="grid gap-4 md:grid-cols-4">
+            <MetricCard label="Open" value={brief.metrics.openOrders} />
+            <MetricCard
+              label="In Progress"
+              value={brief.metrics.inProgressOrders}
+            />
+            <MetricCard label="Done" value={brief.metrics.doneOrders} />
+            <MetricCard label="Canceled" value={brief.metrics.canceledOrders} />
+          </section>
+
+          <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+            <h2 className="mb-4 text-xl font-semibold">Recommended Actions</h2>
+
+            <div className="space-y-3">
+              {brief.recommendedActions.map((action) => (
+                <div
+                  key={action}
+                  className="rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-slate-300"
+                >
+                  {action}
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+            <div className="mb-5 flex items-center justify-between gap-4">
+              <h2 className="text-xl font-semibold">Focus Orders</h2>
+              <Link
+                href="/orders"
+                className="text-sm font-semibold text-slate-200 underline-offset-4 hover:underline"
+              >
+                View all orders
+              </Link>
+            </div>
+
+            {brief.focusOrders.length === 0 ? (
+              <p className="text-slate-400">
+                No urgent focus orders right now.
+              </p>
+            ) : (
+              <div className="space-y-4">
+                {brief.focusOrders.map((order) => (
+                  <Link
+                    key={order.id}
+                    href={`/orders/${order.id}`}
+                    className="block rounded-xl border border-slate-800 bg-slate-950 p-5 hover:border-slate-600"
+                  >
+                    <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <h3 className="font-semibold">{order.title}</h3>
+                        <p className="mt-1 text-sm text-slate-400">
+                          {order.status} · {order.priority}
+                        </p>
+                      </div>
+
+                      <span className="rounded-full border border-slate-700 px-3 py-1 text-xs font-semibold text-slate-300">
+                        {order.intelligence.riskLevel} ·{' '}
+                        {order.intelligence.riskScore}/100
+                      </span>
+                    </div>
+
+                    <p className="text-sm text-slate-400">
+                      {order.intelligence.reasons[0]}
+                    </p>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </section>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function MetricCard({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+      <p className="text-sm text-slate-500">{label}</p>
+      <p className="mt-2 text-3xl font-bold">{value}</p>
     </div>
   );
 }

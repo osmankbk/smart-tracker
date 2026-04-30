@@ -69,3 +69,30 @@ export type OrderIntelligence = {
     lastActivityAt: string | null;
   };
 };
+
+export type DashboardOrderSignal = {
+  id: string;
+  title: string;
+  status: OrderStatus;
+  priority: OrderPriority;
+  createdAt: string;
+  updatedAt: string;
+  intelligence: OrderIntelligence;
+};
+
+export type DashboardIntelligence = {
+  generatedAt: string;
+  summary: string;
+  metrics: {
+    totalOrders: number;
+    openOrders: number;
+    inProgressOrders: number;
+    doneOrders: number;
+    canceledOrders: number;
+    stuckOrders: number;
+    highRiskOrders: number;
+    criticalRiskOrders: number;
+  };
+  focusOrders: DashboardOrderSignal[];
+  recommendedActions: string[];
+};
