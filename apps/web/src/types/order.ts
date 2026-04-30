@@ -29,3 +29,11 @@ export type CreateOrderInput = {
   priority: OrderPriority;
   assigneeId?: string;
 };
+
+export type UpdateOrderInput = {
+  title?: string;
+  description?: string;
+  status?: OrderStatus;
+  priority?: OrderPriority;
+  assigneeId?: string;
+};

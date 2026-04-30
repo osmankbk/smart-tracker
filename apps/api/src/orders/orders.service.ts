@@ -71,6 +71,10 @@ export class OrdersService {
       );
     }
 
+    if (current.status === 'DONE' && data.status && data.status !== 'DONE') {
+      throw new BadRequestException('Cannot change status once order is DONE');
+    }
+
     return this.prisma.order.update({
       where: { id },
       data,

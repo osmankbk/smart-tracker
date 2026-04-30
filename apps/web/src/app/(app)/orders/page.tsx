@@ -2,9 +2,11 @@
 
 import { FormEvent, useEffect, useState } from 'react';
 
-import { createOrder, getOrders } from '@/lib/orders';
-import type { Order, OrderPriority } from '@/types/order';
+import { createOrder, getOrders, updateOrder, cancelOrder } from '@/lib/orders';
+import type { Order, OrderPriority, OrderStatus } from '@/types/order';
+import { get } from 'http';
 
+const statusOptions: OrderStatus[] = ['OPEN', 'IN_PROGRESS', 'DONE'];
 const priorities: OrderPriority[] = ['LOW', 'MEDIUM', 'HIGH'];
 
 export default function OrdersPage() {
@@ -60,6 +62,52 @@ export default function OrdersPage() {
     } finally {
       setIsCreating(false);
     }
+  }
+
+  async function handleStatusChange(orderId: string, status: OrderStatus) {
+    setError('');
+
+    try {
+      const updatedOrder = await updateOrder(orderId, {
+        status,
+      });
+
+      setOrders((currentOrders) =>
+        currentOrders.map((order) =>
+          order.id === orderId ? updatedOrder : order,
+        ),
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update order');
+    }
+  }
+
+  async function handleCancelOrder(orderId: string) {
+    const shouldCancel = window.confirm(
+      'Are you sure you want to cancel this order?',
+    );
+
+    if (!shouldCancel) {
+      return;
+    }
+
+    setError('');
+
+    try {
+      const updatedOrder = await cancelOrder(orderId);
+
+      setOrders((currentOrders) =>
+        currentOrders.map((order) =>
+          order.id === orderId ? updatedOrder : order,
+        ),
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to cancel order');
+    }
+  }
+
+  function getStatusLabel(status: OrderStatus) {
+    return status.replace('_', ' ');
   }
 
   return (
@@ -191,7 +239,7 @@ export default function OrdersPage() {
 
                     <div className="flex gap-2">
                       <span className="rounded-full border border-slate-700 px-3 py-1 text-xs font-semibold text-slate-300">
-                        {order.status}
+                        {getStatusLabel(order.status)}
                       </span>
 
                       <span className="rounded-full border border-slate-700 px-3 py-1 text-xs font-semibold text-slate-300">
@@ -228,6 +276,41 @@ export default function OrdersPage() {
                         {new Date(order.updatedAt).toLocaleString()}
                       </span>
                     </p>
+                  </div>
+                  <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-slate-800 pt-4">
+                    <div>
+                      <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
+                        Status
+                      </label>
+
+                      <select
+                        className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-slate-400 disabled:cursor-not-allowed disabled:opacity-50"
+                        value={order.status}
+                        disabled={order.status === 'CANCELED' || order.status === 'DONE'}
+                        onChange={(event) =>
+                          handleStatusChange(order.id, event.target.value as OrderStatus)
+                        }
+                      >
+                        {order.status === 'CANCELED' ? (
+                          <option value="CANCELED">CANCELED</option>
+                        ) : null}
+
+                        {statusOptions.map((statusOption) => (
+                          <option key={statusOption} value={statusOption}>
+                            {getStatusLabel(statusOption)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <button
+                      onClick={() => handleCancelOrder(order.id)}
+                      className="mt-5 rounded-lg border border-red-800 px-4 py-2 text-sm font-medium text-red-300 hover:bg-red-950 disabled:cursor-not-allowed disabled:opacity-50"
+                      disabled={order.status === 'CANCELED' || order.status === 'DONE'}
+                      type="button"
+                    >
+                      Cancel Order
+                    </button>
                   </div>
                 </article>
               ))}

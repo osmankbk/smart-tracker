@@ -41,11 +41,13 @@ export class OrdersController {
     return this.ordersService.create(createOrderDto, user.id);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Patch(':id')
   update(@Param('id') id: string, @Body() updateOrderDto: UpdateOrderDto) {
     return this.ordersService.update(id, updateOrderDto);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Delete(':id')
   cancel(@Param('id') id: string) {
     return this.ordersService.cancel(id);
