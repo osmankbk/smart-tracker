@@ -175,6 +175,8 @@ export class IntelligenceService {
 
     const reasons: string[] = [];
     const recommendedActions: string[] = [];
+    const orderAgeMs = now.getTime() - order.createdAt.getTime();
+    const orderAgeHours = Math.round(orderAgeMs / HOURS);
 
     let riskScore = 0;
 
@@ -250,6 +252,8 @@ export class IntelligenceService {
     return {
       riskLevel: this.getRiskLevel(riskScore),
       riskScore,
+      orderAgeMs,
+      orderAgeHours,
       timeInCurrentStatusMs,
       timeInCurrentStatusHours,
       isStuck,

@@ -57,6 +57,8 @@ export type ActivityLog = {
 export type OrderIntelligence = {
   riskLevel: RiskLevel;
   riskScore: number;
+  orderAgeMs: number;
+  orderAgeHours: number;
   timeInCurrentStatusMs: number;
   timeInCurrentStatusHours: number;
   isStuck: boolean;

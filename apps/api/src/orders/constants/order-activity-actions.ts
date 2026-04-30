@@ -1,0 +1,8 @@
+export const ORDER_ACTIVITY_ACTIONS = {
+  CREATED: 'ORDER_CREATED',
+  STATUS_CHANGED: 'STATUS_CHANGED',
+  CANCELED: 'CANCELED',
+} as const;
+
+export type OrderActivityAction =
+  (typeof ORDER_ACTIVITY_ACTIONS)[keyof typeof ORDER_ACTIVITY_ACTIONS];

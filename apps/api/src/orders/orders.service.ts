@@ -7,6 +7,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
+import { ORDER_ACTIVITY_ACTIONS } from './constants/order-activity-actions';
 
 import { IntelligenceService } from '../intelligence/intelligence.service';
 @Injectable()
@@ -28,16 +29,42 @@ export class OrdersService {
     });
   }
 
-  create(createOrderDto: CreateOrderDto, createdById: string) {
-    return this.prisma.order.create({
-      data: {
-        ...createOrderDto,
-        createdById,
-      },
-      include: {
-        assignee: true,
-        createdBy: true,
-      },
+  async create(createOrderDto: CreateOrderDto, createdById: string) {
+    return this.prisma.$transaction(async (tx) => {
+      const order = await tx.order.create({
+        data: {
+          ...createOrderDto,
+          createdById,
+        },
+      });
+
+      await tx.activityLog.create({
+        data: {
+          orderId: order.id,
+          actorId: createdById,
+          action: ORDER_ACTIVITY_ACTIONS.CREATED,
+          fromStatus: null,
+          toStatus: order.status,
+        },
+      });
+
+      return tx.order.findUnique({
+        where: {
+          id: order.id,
+        },
+        include: {
+          assignee: true,
+          createdBy: true,
+          activityLogs: {
+            include: {
+              actor: true,
+            },
+            orderBy: {
+              createdAt: 'desc',
+            },
+          },
+        },
+      });
     });
   }
 
@@ -77,6 +104,10 @@ export class OrdersService {
       throw new NotFoundException(`Order with id ${id} not found`);
     }
 
+    const isStatusChanging = Boolean(
+      data.status && data.status !== current.status,
+    );
+
     if (
       current.status === 'CANCELED' &&
       data.status &&
@@ -86,39 +117,44 @@ export class OrdersService {
         'Cannot change status once order is CANCELED',
       );
     }
+
     if (current.status === 'DONE' && data.status && data.status !== 'DONE') {
       throw new BadRequestException('Cannot change status once order is DONE');
     }
 
-    await this.prisma.order.update({
-      where: { id },
-      data,
-    });
-
-    // 🔥 LOG THE CHANGE
-    if (data.status && data.status !== current.status) {
-      await this.prisma.activityLog.create({
-        data: {
-          orderId: id,
-          actorId,
-          action: 'STATUS_CHANGED',
-          fromStatus: current.status,
-          toStatus: data.status,
-        },
+    return this.prisma.$transaction(async (tx) => {
+      await tx.order.update({
+        where: { id },
+        data,
       });
-    }
 
-    return this.prisma.order.findUnique({
-      where: { id },
-      include: {
-        assignee: true,
-        createdBy: true,
-        activityLogs: {
-          orderBy: {
-            createdAt: 'desc',
+      if (isStatusChanging) {
+        await tx.activityLog.create({
+          data: {
+            orderId: id,
+            actorId,
+            action: ORDER_ACTIVITY_ACTIONS.STATUS_CHANGED,
+            fromStatus: current.status,
+            toStatus: data.status,
+          },
+        });
+      }
+
+      return tx.order.findUnique({
+        where: { id },
+        include: {
+          assignee: true,
+          createdBy: true,
+          activityLogs: {
+            include: {
+              actor: true,
+            },
+            orderBy: {
+              createdAt: 'desc',
+            },
           },
         },
-      },
+      });
     });
   }
 
@@ -131,23 +167,47 @@ export class OrdersService {
       throw new NotFoundException(`Order with id ${id} not found`);
     }
 
-    const updated = await this.prisma.order.update({
-      where: { id },
-      data: {
-        status: 'CANCELED',
-      },
-    });
+    if (current.status === 'CANCELED') {
+      return this.findById(id);
+    }
 
-    await this.prisma.activityLog.create({
-      data: {
-        orderId: id,
-        actorId,
-        action: 'CANCELED',
-        fromStatus: current.status,
-        toStatus: 'CANCELED',
-      },
-    });
+    if (current.status === 'DONE') {
+      throw new BadRequestException('Cannot cancel an order once it is DONE');
+    }
 
-    return updated;
+    return this.prisma.$transaction(async (tx) => {
+      await tx.order.update({
+        where: { id },
+        data: {
+          status: 'CANCELED',
+        },
+      });
+
+      await tx.activityLog.create({
+        data: {
+          orderId: id,
+          actorId,
+          action: ORDER_ACTIVITY_ACTIONS.CANCELED,
+          fromStatus: current.status,
+          toStatus: 'CANCELED',
+        },
+      });
+
+      return tx.order.findUnique({
+        where: { id },
+        include: {
+          assignee: true,
+          createdBy: true,
+          activityLogs: {
+            include: {
+              actor: true,
+            },
+            orderBy: {
+              createdAt: 'desc',
+            },
+          },
+        },
+      });
+    });
   }
 }
