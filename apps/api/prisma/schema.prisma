@@ -55,6 +55,12 @@ model Order {
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   activityLogs ActivityLog[]
+
+  workflowId String?
+  statusId   String?
+
+  workflow   Workflow?       @relation(fields: [workflowId], references: [id])
+  statusRef  WorkflowStatus? @relation(fields: [statusId], references: [id])
 }
 
 model ActivityLog {
@@ -72,4 +78,46 @@ model ActivityLog {
 
   order Order @relation(fields: [orderId], references: [id])
   actor User? @relation(fields: [actorId], references: [id])
+}
+
+
+model Workflow {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  statuses WorkflowStatus[]
+  orders   Order[]
+}
+
+model WorkflowStatus {
+  id          String   @id @default(cuid())
+  workflowId String
+
+  name        String
+  key         String
+  order       Int
+
+  category   StatusCategory
+
+  isStart     Boolean @default(false)
+  isTerminal  Boolean @default(false)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workflow Workflow @relation(fields: [workflowId], references: [id])
+  orders   Order[]
+
+  @@unique([workflowId, key])
+}
+
+enum StatusCategory {
+  TODO
+  ACTIVE
+  REVIEW
+  QA
+  DONE
+  CANCELED
 }

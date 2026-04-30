@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
 
@@ -10,6 +11,7 @@ import { UpdateOrderDto } from './dto/update-order.dto';
 import { ORDER_ACTIVITY_ACTIONS } from './constants/order-activity-actions';
 
 import { IntelligenceService } from '../intelligence/intelligence.service';
+import { OrderStatus } from '@prisma/client';
 @Injectable()
 export class OrdersService {
   constructor(
@@ -31,10 +33,39 @@ export class OrdersService {
 
   async create(createOrderDto: CreateOrderDto, createdById: string) {
     return this.prisma.$transaction(async (tx) => {
+      const defaultWorkflow = await tx.workflow.findUnique({
+        where: {
+          id: 'default_workflow',
+        },
+      });
+
+      if (!defaultWorkflow) {
+        throw new Error('Default workflow is not configured');
+      }
+
+      const startStatus = await tx.workflowStatus.findFirst({
+        where: {
+          workflowId: defaultWorkflow.id,
+          isStart: true,
+        },
+      });
+
+      if (!startStatus) {
+        throw new InternalServerErrorException(
+          'Default workflow is not configured',
+        );
+      }
+
       const order = await tx.order.create({
         data: {
           ...createOrderDto,
           createdById,
+          workflowId: defaultWorkflow.id,
+          statusId: startStatus.id,
+
+          // Temporary compatibility field.
+          // Existing code still reads Order.status enum.
+          status: startStatus.key as OrderStatus,
         },
       });
 
@@ -55,6 +86,8 @@ export class OrdersService {
         include: {
           assignee: true,
           createdBy: true,
+          workflow: true,
+          statusRef: true,
           activityLogs: {
             include: {
               actor: true,
@@ -74,13 +107,10 @@ export class OrdersService {
       include: {
         assignee: true,
         createdBy: true,
+        statusRef: true,
         activityLogs: {
-          include: {
-            actor: true,
-          },
-          orderBy: {
-            createdAt: 'desc',
-          },
+          include: { actor: true },
+          orderBy: { createdAt: 'desc' },
         },
       },
     });

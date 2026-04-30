@@ -19,6 +19,9 @@ type OrderLike = {
   createdAt: Date;
   updatedAt: Date;
   activityLogs: ActivityLogLike[];
+  statusRef?: {
+    category: string;
+  } | null;
 };
 
 const HOURS = 1000 * 60 * 60;
@@ -27,6 +30,7 @@ const HOURS = 1000 * 60 * 60;
 export class IntelligenceService {
   constructor(private readonly prisma: PrismaService) {}
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async getDashboardBrief(_userId: string): Promise<DashboardIntelligence> {
     const orders = await this.prisma.order.findMany({
       include: {
@@ -157,6 +161,8 @@ export class IntelligenceService {
   }
 
   analyzeOrder(order: OrderLike): OrderIntelligence {
+    const category = order.statusRef?.category ?? order.status;
+
     const sortedLogs = [...order.activityLogs].sort(
       (a, b) => a.createdAt.getTime() - b.createdAt.getTime(),
     );
@@ -221,6 +227,10 @@ export class IntelligenceService {
       riskScore += 15;
       reasons.push('Order has no recorded activity after creation.');
       recommendedActions.push('Add an update or confirm whether work started.');
+    }
+
+    if (category === 'DONE' || category === 'CANCELED') {
+      riskScore = Math.min(riskScore, 10);
     }
 
     if (order.status === OrderStatus.DONE) {
