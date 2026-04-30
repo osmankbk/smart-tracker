@@ -1,3 +1,5 @@
+import type { WorkflowStatus } from './workflow';
+
 export type OrderStatus = 'OPEN' | 'IN_PROGRESS' | 'DONE' | 'CANCELED';
 
 export type OrderPriority = 'LOW' | 'MEDIUM' | 'HIGH';
@@ -25,6 +27,9 @@ export type Order = {
   updatedAt: string;
   activityLogs: ActivityLog[];
   intelligence?: OrderIntelligence;
+  workflowId?: string | null;
+  statusId?: string | null;
+  statusRef?: WorkflowStatus | null;
 };
 
 export type CreateOrderInput = {
@@ -38,6 +43,7 @@ export type UpdateOrderInput = {
   title?: string;
   description?: string;
   status?: OrderStatus;
+  statusId?: string;
   priority?: OrderPriority;
   assigneeId?: string;
 };

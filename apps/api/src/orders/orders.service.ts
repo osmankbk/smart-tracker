@@ -24,6 +24,7 @@ export class OrdersService {
       include: {
         assignee: true,
         createdBy: true,
+        statusRef: true,
       },
       orderBy: {
         createdAt: 'desc',
@@ -128,44 +129,74 @@ export class OrdersService {
   async update(id: string, data: UpdateOrderDto, actorId?: string) {
     const current = await this.prisma.order.findUnique({
       where: { id },
+      include: {
+        statusRef: true,
+      },
     });
 
     if (!current) {
       throw new NotFoundException(`Order with id ${id} not found`);
     }
 
-    const isStatusChanging = Boolean(
-      data.status && data.status !== current.status,
-    );
+    const nextStatusRef = data.statusId
+      ? await this.prisma.workflowStatus.findUnique({
+          where: {
+            id: data.statusId,
+          },
+        })
+      : null;
+
+    if (data.statusId && !nextStatusRef) {
+      throw new BadRequestException('Selected status does not exist');
+    }
+
+    const currentCategory = current.statusRef?.category ?? current.status;
+    const nextCategory = nextStatusRef?.category;
 
     if (
-      current.status === 'CANCELED' &&
-      data.status &&
-      data.status !== 'CANCELED'
+      currentCategory === 'CANCELED' &&
+      nextCategory &&
+      nextCategory !== 'CANCELED'
     ) {
       throw new BadRequestException(
         'Cannot change status once order is CANCELED',
       );
     }
 
-    if (current.status === 'DONE' && data.status && data.status !== 'DONE') {
+    if (currentCategory === 'DONE' && nextCategory && nextCategory !== 'DONE') {
       throw new BadRequestException('Cannot change status once order is DONE');
     }
+
+    const isWorkflowStatusChanging = Boolean(
+      nextStatusRef && nextStatusRef.id !== current.statusId,
+    );
 
     return this.prisma.$transaction(async (tx) => {
       await tx.order.update({
         where: { id },
-        data,
+        data: {
+          title: data.title,
+          description: data.description,
+          priority: data.priority,
+          assigneeId: data.assigneeId,
+
+          ...(nextStatusRef
+            ? {
+                statusId: nextStatusRef.id,
+                status: nextStatusRef.key as any,
+              }
+            : {}),
+        },
       });
 
-      if (isStatusChanging) {
+      if (isWorkflowStatusChanging && nextStatusRef) {
         await tx.activityLog.create({
           data: {
             orderId: id,
             actorId,
             action: ORDER_ACTIVITY_ACTIONS.STATUS_CHANGED,
             fromStatus: current.status,
-            toStatus: data.status,
+            toStatus: nextStatusRef.key as any,
           },
         });
       }
@@ -175,6 +206,7 @@ export class OrdersService {
         include: {
           assignee: true,
           createdBy: true,
+          statusRef: true,
           activityLogs: {
             include: {
               actor: true,
@@ -228,6 +260,7 @@ export class OrdersService {
         include: {
           assignee: true,
           createdBy: true,
+          statusRef: true,
           activityLogs: {
             include: {
               actor: true,

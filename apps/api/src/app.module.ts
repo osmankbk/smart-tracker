@@ -9,6 +9,7 @@ import { OrdersModule } from './orders/orders.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { IntelligenceModule } from './intelligence/intelligence.module';
+import { WorkflowsModule } from './workflows/workflows.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { IntelligenceModule } from './intelligence/intelligence.module';
     PrismaModule,
     AuthModule,
     IntelligenceModule,
+    WorkflowsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

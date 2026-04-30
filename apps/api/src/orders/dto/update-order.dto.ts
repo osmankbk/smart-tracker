@@ -21,4 +21,8 @@ export class UpdateOrderDto {
   @IsOptional()
   @IsString()
   assigneeId?: string;
+
+  @IsOptional()
+  @IsString()
+  statusId?: string;
 }
