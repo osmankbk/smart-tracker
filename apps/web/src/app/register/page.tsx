@@ -3,10 +3,14 @@
 import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
+import { useAuth } from '@/hooks/use-auth';
+
 import { register } from '@/lib/auth';
 
 export default function RegisterPage() {
   const router = useRouter();
+
+  const { setAuth } = useAuth();
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -21,12 +25,13 @@ export default function RegisterPage() {
     setIsLoading(true);
 
     try {
-      await register({
+      const authResponse = await register({
         name,
         email,
         password,
       });
 
+      setAuth(authResponse);
       router.push('/dashboard');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed');

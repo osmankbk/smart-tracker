@@ -25,25 +25,17 @@ export function clearAccessToken() {
 }
 
 export async function login(input: LoginInput) {
-  const response = await apiFetch<AuthResponse>('/api/v1/auth/login', {
+  return apiFetch<AuthResponse>('/api/v1/auth/login', {
     method: 'POST',
     body: JSON.stringify(input),
   });
-
-  saveAccessToken(response.accessToken);
-
-  return response;
 }
 
 export async function register(input: RegisterInput) {
-  const response = await apiFetch<AuthResponse>('/api/v1/auth/register', {
+  return apiFetch<AuthResponse>('/api/v1/auth/register', {
     method: 'POST',
     body: JSON.stringify(input),
   });
-
-  saveAccessToken(response.accessToken);
-
-  return response;
 }
 
 export async function getCurrentUser() {

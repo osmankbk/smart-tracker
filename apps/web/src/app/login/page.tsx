@@ -3,10 +3,14 @@
 import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
+import { useAuth } from '@/hooks/use-auth';
+
 import { login } from '@/lib/auth';
 
 export default function LoginPage() {
   const router = useRouter();
+  
+  const { setAuth } = useAuth();
 
   const [email, setEmail] = useState('admin@smarttracker.dev');
   const [password, setPassword] = useState('Password123!');
@@ -20,11 +24,12 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      await login({
+      const authResponse = await login({
         email,
         password,
       });
 
+      setAuth(authResponse);
       router.push('/dashboard');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
