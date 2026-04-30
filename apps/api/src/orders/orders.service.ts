@@ -7,9 +7,14 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
+
+import { IntelligenceService } from '../intelligence/intelligence.service';
 @Injectable()
 export class OrdersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly intelligenceService: IntelligenceService,
+  ) {}
 
   findAll() {
     return this.prisma.order.findMany({
@@ -42,6 +47,14 @@ export class OrdersService {
       include: {
         assignee: true,
         createdBy: true,
+        activityLogs: {
+          include: {
+            actor: true,
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+        },
       },
     });
 
@@ -49,10 +62,13 @@ export class OrdersService {
       throw new NotFoundException(`Order with id ${id} not found`);
     }
 
-    return order;
+    return {
+      ...order,
+      intelligence: this.intelligenceService.analyzeOrder(order),
+    };
   }
 
-  async update(id: string, data: UpdateOrderDto) {
+  async update(id: string, data: UpdateOrderDto, actorId?: string) {
     const current = await this.prisma.order.findUnique({
       where: { id },
     });
@@ -70,29 +86,68 @@ export class OrdersService {
         'Cannot change status once order is CANCELED',
       );
     }
-
     if (current.status === 'DONE' && data.status && data.status !== 'DONE') {
       throw new BadRequestException('Cannot change status once order is DONE');
     }
 
-    return this.prisma.order.update({
+    await this.prisma.order.update({
       where: { id },
       data,
+    });
+
+    // 🔥 LOG THE CHANGE
+    if (data.status && data.status !== current.status) {
+      await this.prisma.activityLog.create({
+        data: {
+          orderId: id,
+          actorId,
+          action: 'STATUS_CHANGED',
+          fromStatus: current.status,
+          toStatus: data.status,
+        },
+      });
+    }
+
+    return this.prisma.order.findUnique({
+      where: { id },
       include: {
         assignee: true,
         createdBy: true,
+        activityLogs: {
+          orderBy: {
+            createdAt: 'desc',
+          },
+        },
       },
     });
   }
 
-  async cancel(id: string) {
-    await this.findById(id); // make sure the order exists
+  async cancel(id: string, actorId?: string) {
+    const current = await this.prisma.order.findUnique({
+      where: { id },
+    });
 
-    return this.prisma.order.update({
+    if (!current) {
+      throw new NotFoundException(`Order with id ${id} not found`);
+    }
+
+    const updated = await this.prisma.order.update({
       where: { id },
       data: {
         status: 'CANCELED',
       },
     });
+
+    await this.prisma.activityLog.create({
+      data: {
+        orderId: id,
+        actorId,
+        action: 'CANCELED',
+        fromStatus: current.status,
+        toStatus: 'CANCELED',
+      },
+    });
+
+    return updated;
   }
 }

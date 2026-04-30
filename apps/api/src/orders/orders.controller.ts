@@ -9,11 +9,11 @@ import {
   UseGuards,
 } from '@nestjs/common';
 
-import * as currentUserDecorator from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { OrdersService } from './orders.service';
+import * as currentUserDecorator from '../auth/decorators/current-user.decorator';
 
 @Controller({
   path: 'orders',
@@ -43,13 +43,20 @@ export class OrdersController {
 
   @UseGuards(JwtAuthGuard)
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateOrderDto: UpdateOrderDto) {
-    return this.ordersService.update(id, updateOrderDto);
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateOrderDto,
+    @currentUserDecorator.CurrentUser() user: currentUserDecorator.AuthUser,
+  ) {
+    return this.ordersService.update(id, dto, user.id);
   }
 
   @UseGuards(JwtAuthGuard)
   @Delete(':id')
-  cancel(@Param('id') id: string) {
-    return this.ordersService.cancel(id);
+  cancel(
+    @Param('id') id: string,
+    @currentUserDecorator.CurrentUser() user: currentUserDecorator.AuthUser,
+  ) {
+    return this.ordersService.cancel(id, user.id);
   }
 }

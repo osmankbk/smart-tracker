@@ -44,3 +44,7 @@ export async function cancelOrder(id: string) {
     token,
   });
 }
+
+export async function getOrderById(id: string) {
+  return apiFetch<Order>(`/api/v1/orders/${id}`);
+}

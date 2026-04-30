@@ -1,10 +1,10 @@
 'use client';
 
 import { FormEvent, useEffect, useState } from 'react';
+import Link from 'next/link';
 
 import { createOrder, getOrders, updateOrder, cancelOrder } from '@/lib/orders';
 import type { Order, OrderPriority, OrderStatus } from '@/types/order';
-import { get } from 'http';
 
 const statusOptions: OrderStatus[] = ['OPEN', 'IN_PROGRESS', 'DONE'];
 const priorities: OrderPriority[] = ['LOW', 'MEDIUM', 'HIGH'];
@@ -277,6 +277,12 @@ export default function OrdersPage() {
                       </span>
                     </p>
                   </div>
+                  <Link
+                    href={`/orders/${order.id}`}
+                    className="text-sm font-semibold text-slate-200 underline-offset-4 hover:underline"
+                  >
+                    View intelligence
+                  </Link>
                   <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-slate-800 pt-4">
                     <div>
                       <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">

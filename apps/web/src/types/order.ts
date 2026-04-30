@@ -2,6 +2,8 @@ export type OrderStatus = 'OPEN' | 'IN_PROGRESS' | 'DONE' | 'CANCELED';
 
 export type OrderPriority = 'LOW' | 'MEDIUM' | 'HIGH';
 
+export type RiskLevel = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+
 export type OrderUser = {
   id: string;
   name: string;
@@ -21,6 +23,8 @@ export type Order = {
   createdBy?: OrderUser | null;
   createdAt: string;
   updatedAt: string;
+  activityLogs: ActivityLog[];
+  intelligence?: OrderIntelligence;
 };
 
 export type CreateOrderInput = {
@@ -36,4 +40,32 @@ export type UpdateOrderInput = {
   status?: OrderStatus;
   priority?: OrderPriority;
   assigneeId?: string;
+};
+
+export type ActivityLog = {
+  id: string;
+  action: string;
+  fromStatus?: string | null;
+  toStatus?: string | null;
+  reason?: string | null;
+  createdAt: string;
+  actor?: {
+    email: string;
+  } | null;
+};
+
+export type OrderIntelligence = {
+  riskLevel: RiskLevel;
+  riskScore: number;
+  timeInCurrentStatusMs: number;
+  timeInCurrentStatusHours: number;
+  isStuck: boolean;
+  reasons: string[];
+  recommendedActions: string[];
+  signals: {
+    status: OrderStatus;
+    priority: OrderPriority;
+    activityCount: number;
+    lastActivityAt: string | null;
+  };
 };
