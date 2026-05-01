@@ -37,6 +37,7 @@ model User {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
+  comments       Comment[]
   organization   Organization? @relation(fields: [organizationId], references: [id])
 
   assignedOrders Order[] @relation("AssignedOrders")
@@ -67,6 +68,7 @@ model Order {
   createdBy      User? @relation("CreatedOrders", fields: [createdById], references: [id])
 
   activityLogs   ActivityLog[]
+  comments       Comment[]
 
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -155,9 +157,26 @@ model Organization {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  comments Comment[]
   users     User[]
   orders    Order[]
   workflows Workflow[]
+}
+
+model Comment {
+  id             String   @id @default(cuid())
+  orderId        String
+  authorId       String
+  organizationId String
+
+  body           String
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  order          Order        @relation(fields: [orderId], references: [id])
+  author         User         @relation(fields: [authorId], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id])
 }
 
 enum StatusCategory {

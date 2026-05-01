@@ -10,6 +10,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { IntelligenceModule } from './intelligence/intelligence.module';
 import { WorkflowsModule } from './workflows/workflows.module';
+import { CommentsModule } from './comments/comments.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { WorkflowsModule } from './workflows/workflows.module';
     AuthModule,
     IntelligenceModule,
     WorkflowsModule,
+    CommentsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

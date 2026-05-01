@@ -30,6 +30,7 @@ export class OrdersController {
     return this.ordersService.findAll(user.organizationId);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Get(':id')
   findById(
     @Param('id') id: string,
