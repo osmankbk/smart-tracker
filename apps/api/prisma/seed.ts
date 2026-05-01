@@ -2,6 +2,10 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient, UserRole, StatusCategory } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
+import { WorkflowValidationService } from 'src/workflows/workflow-validation.service';
+
+const validator = new WorkflowValidationService();
+
 const adapter = new PrismaPg({
   connectionString: process.env.DATABASE_URL,
 });
@@ -71,6 +75,8 @@ async function main() {
       isTerminal: true,
     },
   ];
+
+  validator.validateStatuses(statuses);
 
   for (const status of statuses) {
     await prisma.workflowStatus.upsert({

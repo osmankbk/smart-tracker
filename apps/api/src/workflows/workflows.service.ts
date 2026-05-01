@@ -1,10 +1,18 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../prisma/prisma.service';
+import { WorkflowValidationService } from './workflow-validation.service';
 
 @Injectable()
 export class WorkflowsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly validator: WorkflowValidationService,
+  ) {}
+
+  async validateWorkflowDefinition(statuses: any[]) {
+    this.validator.validateStatuses(statuses);
+  }
 
   async findDefaultWorkflow() {
     const workflow = await this.prisma.workflow.findUnique({
@@ -23,6 +31,8 @@ export class WorkflowsService {
     if (!workflow) {
       throw new NotFoundException('Default workflow not found');
     }
+
+    this.validator.validateStatuses(workflow.statuses);
 
     return workflow;
   }
