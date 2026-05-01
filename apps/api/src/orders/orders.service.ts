@@ -171,6 +171,12 @@ export class OrdersService {
       nextStatusRef && nextStatusRef.id !== current.statusId,
     );
 
+    const isRegression = Boolean(
+      current.statusRef &&
+      nextStatusRef &&
+      nextStatusRef.order < current.statusRef.order,
+    );
+
     return this.prisma.$transaction(async (tx) => {
       await tx.order.update({
         where: { id },
@@ -194,7 +200,9 @@ export class OrdersService {
           data: {
             orderId: id,
             actorId,
-            action: ORDER_ACTIVITY_ACTIONS.STATUS_CHANGED,
+            action: isRegression
+              ? ORDER_ACTIVITY_ACTIONS.STATUS_REGRESSION
+              : ORDER_ACTIVITY_ACTIONS.STATUS_CHANGED,
             fromStatus: current.status,
             toStatus: nextStatusRef.key as any,
           },
