@@ -34,6 +34,13 @@ export function OrderIntelligencePanel({
           <p className="mt-2 text-sm text-slate-400">
             Risk, lifecycle signals, and recommended next actions.
           </p>
+          <p className="mt-2 text-sm text-slate-400">
+            Current lifecycle phase:{' '}
+            <span className="font-semibold text-slate-200">
+              {intelligence.signals.statusLabel}
+            </span>{' '}
+            ({intelligence.signals.statusCategory})
+          </p>
         </div>
 
         <div

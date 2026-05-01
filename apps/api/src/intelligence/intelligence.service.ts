@@ -23,7 +23,13 @@ type OrderLike = {
   updatedAt: Date;
   activityLogs: ActivityLogLike[];
   statusRef?: {
+    id: string;
+    name: string;
+    key: string;
+    order: number;
     category: string;
+    isStart: boolean;
+    isTerminal: boolean;
   } | null;
 };
 
@@ -33,10 +39,32 @@ const HOURS = 1000 * 60 * 60;
 export class IntelligenceService {
   constructor(private readonly prisma: PrismaService) {}
 
+  private getStatusCategory(order: OrderLike) {
+    return order.statusRef?.category ?? this.getFallbackCategory(order.status);
+  }
+
+  private getStatusLabel(order: OrderLike) {
+    return order.statusRef?.name ?? order.status.replace('_', ' ');
+  }
+
+  private getFallbackCategory(status: OrderStatus) {
+    if (status === OrderStatus.OPEN) return 'TODO';
+    if (status === OrderStatus.IN_PROGRESS) return 'ACTIVE';
+    if (status === OrderStatus.DONE) return 'DONE';
+    if (status === OrderStatus.CANCELED) return 'CANCELED';
+
+    return 'ACTIVE';
+  }
+
+  private isTerminalCategory(category: string) {
+    return category === 'DONE' || category === 'CANCELED';
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async getDashboardBrief(_userId: string): Promise<DashboardIntelligence> {
     const orders = await this.prisma.order.findMany({
       include: {
+        statusRef: true,
         activityLogs: true,
       },
       orderBy: {
@@ -183,6 +211,9 @@ export class IntelligenceService {
       sortedLogs,
     );
 
+    const statusCategory = this.getStatusCategory(order);
+    const statusLabel = this.getStatusLabel(order);
+
     const now = new Date();
 
     const orderAgeMs = now.getTime() - order.createdAt.getTime();
@@ -199,7 +230,7 @@ export class IntelligenceService {
     let riskScore = 0;
 
     const isStuck = this.isOrderStuck(
-      order.status,
+      statusCategory,
       order.priority,
       timeInCurrentStatusHours,
     );
@@ -207,7 +238,7 @@ export class IntelligenceService {
     if (isStuck) {
       riskScore += 40;
       reasons.push(
-        `Order has been ${order.status} for ${timeInCurrentStatusHours} hours.`,
+        `Order has been in ${statusLabel} for ${timeInCurrentStatusHours} hours.`,
       );
       recommendedActions.push(
         'Review the order for blockers and confirm the next owner.',
@@ -220,19 +251,36 @@ export class IntelligenceService {
       recommendedActions.push('Escalate visibility to a manager or lead.');
     }
 
-    if (order.status === OrderStatus.OPEN && timeInCurrentStatusHours >= 24) {
+    if (statusCategory === 'TODO' && timeInCurrentStatusHours >= 24) {
       riskScore += 20;
-      reasons.push('Order has remained OPEN for at least 24 hours.');
-      recommendedActions.push('Assign the order or move it into progress.');
+      reasons.push(
+        `Order has remained in ${statusLabel} for at least 24 hours.`,
+      );
+      recommendedActions.push('Assign the order or move it into active work.');
     }
 
-    if (
-      order.status === OrderStatus.IN_PROGRESS &&
-      timeInCurrentStatusHours >= 48
-    ) {
+    if (statusCategory === 'ACTIVE' && timeInCurrentStatusHours >= 48) {
       riskScore += 30;
-      reasons.push('Order has been IN_PROGRESS for at least 48 hours.');
+      reasons.push(`Order has been in ${statusLabel} for at least 48 hours.`);
       recommendedActions.push('Check if the work is blocked or needs help.');
+    }
+
+    if (statusCategory === 'REVIEW' && timeInCurrentStatusHours >= 36) {
+      riskScore += 25;
+      reasons.push(
+        `Order has been waiting in ${statusLabel} for at least 36 hours.`,
+      );
+      recommendedActions.push(
+        'Confirm who owns the review and whether a decision is needed.',
+      );
+    }
+
+    if (statusCategory === 'QA' && timeInCurrentStatusHours >= 36) {
+      riskScore += 25;
+      reasons.push(`Order has been in ${statusLabel} for at least 36 hours.`);
+      recommendedActions.push(
+        'Check QA blockers and confirm expected completion timing.',
+      );
     }
 
     if (order.activityLogs.length === 0 && timeInCurrentStatusHours >= 24) {
@@ -277,17 +325,17 @@ export class IntelligenceService {
       );
     }
 
-    if (order.status === OrderStatus.DONE) {
+    if (statusCategory === 'DONE') {
       riskScore = Math.min(riskScore, 10);
-      reasons.push('Order is completed and locked.');
+      reasons.push(`Order is in terminal status ${statusLabel}.`);
       recommendedActions.push(
         'No action needed unless an admin override is required.',
       );
     }
 
-    if (order.status === OrderStatus.CANCELED) {
+    if (statusCategory === 'CANCELED') {
       riskScore = Math.min(riskScore, 10);
-      reasons.push('Order is canceled and locked.');
+      reasons.push(`Order is canceled in status ${statusLabel}.`);
       recommendedActions.push(
         'No action needed unless an admin override is required.',
       );
@@ -315,6 +363,8 @@ export class IntelligenceService {
       recommendedActions,
       signals: {
         status: order.status,
+        statusLabel,
+        statusCategory,
         priority: order.priority,
         activityCount: order.activityLogs.length,
         statusChangeCount,
@@ -340,11 +390,11 @@ export class IntelligenceService {
   }
 
   private isOrderStuck(
-    status: OrderStatus,
+    category: string,
     priority: OrderPriority,
     hours: number,
   ) {
-    if (status === OrderStatus.DONE || status === OrderStatus.CANCELED) {
+    if (this.isTerminalCategory(category)) {
       return false;
     }
 
@@ -352,11 +402,19 @@ export class IntelligenceService {
       return true;
     }
 
-    if (status === OrderStatus.OPEN && hours >= 24) {
+    if (category === 'TODO' && hours >= 24) {
       return true;
     }
 
-    if (status === OrderStatus.IN_PROGRESS && hours >= 48) {
+    if (category === 'ACTIVE' && hours >= 48) {
+      return true;
+    }
+
+    if (category === 'REVIEW' && hours >= 36) {
+      return true;
+    }
+
+    if (category === 'QA' && hours >= 36) {
       return true;
     }
 

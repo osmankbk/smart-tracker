@@ -72,6 +72,8 @@ export type OrderIntelligence = {
   recommendedActions: string[];
   signals: {
     status: OrderStatus;
+    statusLabel: string;
+    statusCategory: string;
     priority: OrderPriority;
     activityCount: number;
     statusChangeCount: number;
