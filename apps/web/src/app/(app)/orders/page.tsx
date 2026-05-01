@@ -7,7 +7,7 @@ import { createOrder, getOrders, updateOrder, cancelOrder } from '@/lib/orders';
 import type { Order, OrderPriority, OrderStatus } from '@/types/order';
 
 import { getDefaultWorkflow } from '@/lib/workflows';
-import type { WorkflowStatus } from '@/types/workflow';
+import type { WorkflowStatus, WorkflowTransition } from '@/types/workflow';
 
 const statusOptions: OrderStatus[] = ['OPEN', 'IN_PROGRESS', 'DONE'];
 const priorities: OrderPriority[] = ['LOW', 'MEDIUM', 'HIGH'];
@@ -16,6 +16,7 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
 
   const [workflowStatuses, setWorkflowStatuses] = useState<WorkflowStatus[]>([]);
+  const [workflowTransitions, setWorkflowTransitions] = useState<WorkflowTransition[]>([]);
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -35,6 +36,7 @@ export default function OrdersPage() {
 
         setOrders(orderList);
         setWorkflowStatuses(workflow.statuses);
+        setWorkflowTransitions(workflow.transitions);
       } catch (err) {
         setError(
           err instanceof Error
@@ -116,6 +118,21 @@ export default function OrdersPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to cancel order');
     }
+  }
+
+  function getAvailableStatusesForOrder(order: Order) {
+    if (!order.workflowId || !order.statusId) {
+      return [];
+    }
+
+    const allowedToStatusIds = workflowTransitions
+      .filter((transition) => transition.fromStatusId === order.statusId)
+      .map((transition) => transition.toStatusId);
+
+    return workflowStatuses.filter(
+      (status) =>
+        status.id === order.statusId || allowedToStatusIds.includes(status.id),
+    );
   }
 
   function getStatusLabel(status: OrderStatus) {
@@ -326,7 +343,7 @@ export default function OrdersPage() {
                         disabled={isLocked}
                         onChange={(event) => handleStatusChange(order.id, event.target.value)}
                       >
-                        {workflowStatuses.map((status) => (
+                        {getAvailableStatusesForOrder(order).map((status) => (
                           <option key={status.id} value={status.id}>
                             {status.name}
                           </option>

@@ -25,4 +25,14 @@ export type Workflow = {
   createdAt: string;
   updatedAt: string;
   statuses: WorkflowStatus[];
+  transitions: WorkflowTransition[];
+};
+
+export type WorkflowTransition = {
+  id: string;
+  workflowId: string;
+  fromStatusId: string;
+  toStatusId: string;
+  createdAt: string;
+  updatedAt: string;
 };

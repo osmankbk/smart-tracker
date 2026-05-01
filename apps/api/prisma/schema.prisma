@@ -88,6 +88,7 @@ model Workflow {
   updatedAt DateTime @updatedAt
 
   statuses WorkflowStatus[]
+  transitions WorkflowTransition[]
   orders   Order[]
 }
 
@@ -111,6 +112,25 @@ model WorkflowStatus {
   orders   Order[]
 
   @@unique([workflowId, key])
+
+  transitionsFrom WorkflowTransition[] @relation("TransitionFromStatus")
+  transitionsTo   WorkflowTransition[] @relation("TransitionToStatus")
+}
+
+model WorkflowTransition {
+  id             String   @id @default(cuid())
+  workflowId     String
+  fromStatusId   String
+  toStatusId     String
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  workflow       Workflow       @relation(fields: [workflowId], references: [id])
+  fromStatus     WorkflowStatus @relation("TransitionFromStatus", fields: [fromStatusId], references: [id])
+  toStatus       WorkflowStatus @relation("TransitionToStatus", fields: [toStatusId], references: [id])
+
+  @@unique([workflowId, fromStatusId, toStatusId])
 }
 
 enum StatusCategory {

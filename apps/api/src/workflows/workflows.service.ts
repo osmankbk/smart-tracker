@@ -25,6 +25,7 @@ export class WorkflowsService {
             order: 'asc',
           },
         },
+        transitions: true,
       },
     });
 
@@ -46,6 +47,7 @@ export class WorkflowsService {
             order: 'asc',
           },
         },
+        transitions: true,
       },
     });
 

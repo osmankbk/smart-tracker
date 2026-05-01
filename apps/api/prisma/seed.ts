@@ -104,6 +104,49 @@ async function main() {
       },
     });
   }
+
+  const workflowStatuses = await prisma.workflowStatus.findMany({
+    where: {
+      workflowId: defaultWorkflow.id,
+    },
+  });
+
+  const statusByKey = Object.fromEntries(
+    workflowStatuses.map((status) => [status.key, status]),
+  );
+
+  const transitions = [
+    ['OPEN', 'IN_PROGRESS'],
+    ['IN_PROGRESS', 'DONE'],
+    ['OPEN', 'CANCELED'],
+    ['IN_PROGRESS', 'CANCELED'],
+  ];
+
+  for (const [fromKey, toKey] of transitions) {
+    const fromStatus = statusByKey[fromKey];
+    const toStatus = statusByKey[toKey];
+
+    if (!fromStatus || !toStatus) {
+      continue;
+    }
+
+    await prisma.workflowTransition.upsert({
+      where: {
+        workflowId_fromStatusId_toStatusId: {
+          workflowId: defaultWorkflow.id,
+          fromStatusId: fromStatus.id,
+          toStatusId: toStatus.id,
+        },
+      },
+      update: {},
+      create: {
+        workflowId: defaultWorkflow.id,
+        fromStatusId: fromStatus.id,
+        toStatusId: toStatus.id,
+      },
+    });
+  }
+
   await prisma.order.upsert({
     where: {
       id: 'demo_order_1',

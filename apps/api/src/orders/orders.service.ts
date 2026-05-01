@@ -150,6 +150,34 @@ export class OrdersService {
       throw new BadRequestException('Selected status does not exist');
     }
 
+    if (nextStatusRef && nextStatusRef.id !== current.statusId) {
+      if (!current.workflowId || !current.statusId) {
+        throw new BadRequestException(
+          'Order is missing workflow status data. Please backfill workflow data.',
+        );
+      }
+
+      const allowedTransition = await this.prisma.workflowTransition.findUnique(
+        {
+          where: {
+            workflowId_fromStatusId_toStatusId: {
+              workflowId: current.workflowId,
+              fromStatusId: current.statusId,
+              toStatusId: nextStatusRef.id,
+            },
+          },
+        },
+      );
+
+      if (!allowedTransition) {
+        throw new BadRequestException(
+          `Transition from ${current.statusRef?.name ?? current.status} to ${
+            nextStatusRef.name
+          } is not allowed.`,
+        );
+      }
+    }
+
     const currentCategory = current.statusRef?.category ?? current.status;
     const nextCategory = nextStatusRef?.category;
 
