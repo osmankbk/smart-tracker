@@ -13,18 +13,26 @@ export default function OrderDetailPage() {
   const id = params.id as string;
 
   const [order, setOrder] = useState<Order | null>(null);
+  const [errors, setErrors] = useState('');
 
   useEffect(() => {
     async function load() {
-      const data = await getOrderById(id);
-      setOrder(data);
+      try {
+        const data = await getOrderById(id);
+        setOrder(data);
+      } catch (err) {
+        setErrors(err instanceof Error ? err.message : 'Failed to load Order detail')
+      }
     }
 
     load();
   }, [id]);
 
-  if (!order) {
-    return <p className="text-slate-400">Loading...</p>;
+  if (errors) {
+    return <p className="text-slate-800">{errors}</p>
+    
+  } else if (!order) {
+    return <p className="text-slate-800">...Loading</p>
   }
 
   return (

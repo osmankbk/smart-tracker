@@ -15,18 +15,31 @@ const prisma = new PrismaClient({ adapter });
 async function main() {
   const passwordHash = await bcrypt.hash('Password123!', 10);
 
+  const organization = await prisma.organization.upsert({
+    where: {
+      slug: 'demo-org',
+    },
+    update: {},
+    create: {
+      name: 'Demo Organization',
+      slug: 'demo-org',
+    },
+  });
+
   const admin = await prisma.user.upsert({
     where: {
       email: 'admin@smarttracker.dev',
     },
     update: {
+      organizationId: organization.id,
       passwordHash,
     },
     create: {
-      name: 'Admin Demo',
+      name: 'Demo Admin',
       email: 'admin@smarttracker.dev',
       passwordHash,
       role: UserRole.ADMIN,
+      organizationId: organization.id,
     },
   });
 
@@ -34,10 +47,13 @@ async function main() {
     where: {
       id: 'default_workflow',
     },
-    update: {},
+    update: {
+      organizationId: organization.id,
+    },
     create: {
       id: 'default_workflow',
       name: 'Default Workflow',
+      organizationId: organization.id,
     },
   });
 
@@ -147,11 +163,24 @@ async function main() {
     });
   }
 
+  const startStatus = await prisma.workflowStatus.findFirst({
+    where: {
+      workflowId: defaultWorkflow.id,
+      isStart: true,
+    },
+  });
+
+  if (!startStatus) {
+    throw new Error('No start status found for default workflow');
+  }
+
   await prisma.order.upsert({
     where: {
       id: 'demo_order_1',
     },
-    update: {},
+    update: {
+      organizationId: organization.id,
+    },
     create: {
       id: 'demo_order_1',
       title: 'First persisted Smart Tracker order',
@@ -159,6 +188,10 @@ async function main() {
       priority: 'HIGH',
       createdById: admin.id,
       assigneeId: admin.id,
+      organizationId: organization.id,
+      workflowId: defaultWorkflow.id,
+      statusId: startStatus.id,
+      status: 'OPEN',
     },
   });
 }

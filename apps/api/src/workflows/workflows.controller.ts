@@ -2,6 +2,7 @@ import { Controller, Get, Param, UseGuards } from '@nestjs/common';
 
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { WorkflowsService } from './workflows.service';
+import * as currentUserDecorator from '../auth/decorators/current-user.decorator';
 
 @Controller({
   path: 'workflows',
@@ -12,8 +13,10 @@ export class WorkflowsController {
 
   @UseGuards(JwtAuthGuard)
   @Get('default')
-  findDefaultWorkflow() {
-    return this.workflowsService.findDefaultWorkflow();
+  findDefaultWorkflow(
+    @currentUserDecorator.CurrentUser() user: currentUserDecorator.AuthUser,
+  ) {
+    return this.workflowsService.findDefaultWorkflow(user.organizationId);
   }
 
   @UseGuards(JwtAuthGuard)

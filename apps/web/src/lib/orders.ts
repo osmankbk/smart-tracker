@@ -13,7 +13,19 @@ function requireAccessToken() {
 }
 
 export async function getOrders() {
-  return apiFetch<Order[]>('/api/v1/orders');
+  const token = requireAccessToken();
+
+  return apiFetch<Order[]>('/api/v1/orders', {
+    token,
+  });
+}
+
+export async function getOrderById(id: string) {
+  const token = requireAccessToken();
+
+  return apiFetch<Order>(`/api/v1/orders/${id}`, {
+    token,
+  });
 }
 
 export async function createOrder(input: CreateOrderInput) {
@@ -43,8 +55,4 @@ export async function cancelOrder(id: string) {
     method: 'DELETE',
     token,
   });
-}
-
-export async function getOrderById(id: string) {
-  return apiFetch<Order>(`/api/v1/orders/${id}`);
 }

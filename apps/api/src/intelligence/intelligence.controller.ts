@@ -16,6 +16,6 @@ export class IntelligenceController {
   getBrief(
     @currentUserDecorator.CurrentUser() user: currentUserDecorator.AuthUser,
   ) {
-    return this.intelligenceService.getDashboardBrief(user.id);
+    return this.intelligenceService.getDashboardBrief(user.organizationId);
   }
 }

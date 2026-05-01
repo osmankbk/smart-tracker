@@ -14,10 +14,10 @@ export class WorkflowsService {
     this.validator.validateStatuses(statuses);
   }
 
-  async findDefaultWorkflow() {
-    const workflow = await this.prisma.workflow.findUnique({
+  async findDefaultWorkflow(organizationId: string | null) {
+    const workflow = await this.prisma.workflow.findFirst({
       where: {
-        id: 'default_workflow',
+        organizationId,
       },
       include: {
         statuses: {

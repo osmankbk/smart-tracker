@@ -60,9 +60,13 @@ export class IntelligenceService {
     return category === 'DONE' || category === 'CANCELED';
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  async getDashboardBrief(_userId: string): Promise<DashboardIntelligence> {
+  async getDashboardBrief(
+    organizationId: string | null,
+  ): Promise<DashboardIntelligence> {
     const orders = await this.prisma.order.findMany({
+      where: {
+        organizationId,
+      },
       include: {
         statusRef: true,
         activityLogs: true,

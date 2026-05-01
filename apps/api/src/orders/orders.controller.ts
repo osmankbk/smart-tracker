@@ -22,14 +22,20 @@ import * as currentUserDecorator from '../auth/decorators/current-user.decorator
 export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
 
+  @UseGuards(JwtAuthGuard)
   @Get()
-  findAll() {
-    return this.ordersService.findAll();
+  findAll(
+    @currentUserDecorator.CurrentUser() user: currentUserDecorator.AuthUser,
+  ) {
+    return this.ordersService.findAll(user.organizationId);
   }
 
   @Get(':id')
-  findById(@Param('id') id: string) {
-    return this.ordersService.findById(id);
+  findById(
+    @Param('id') id: string,
+    @currentUserDecorator.CurrentUser() user: currentUserDecorator.AuthUser,
+  ) {
+    return this.ordersService.findById(id, user.organizationId);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -38,7 +44,11 @@ export class OrdersController {
     @Body() createOrderDto: CreateOrderDto,
     @currentUserDecorator.CurrentUser() user: currentUserDecorator.AuthUser,
   ) {
-    return this.ordersService.create(createOrderDto, user.id);
+    return this.ordersService.create(
+      createOrderDto,
+      user.id,
+      user.organizationId,
+    );
   }
 
   @UseGuards(JwtAuthGuard)
