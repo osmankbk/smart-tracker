@@ -45,13 +45,14 @@ export function OrderIntelligencePanel({
         </div>
       </div>
 
-      <div className="mb-6 grid gap-4 md:grid-cols-4">
+      <div className="mb-6 grid gap-4 md:grid-cols-3">
         <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
           <p className="text-sm text-slate-500">Order age</p>
           <p className="mt-2 text-2xl font-bold">
             {intelligence.orderAgeHours}h
           </p>
         </div>
+
         <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
           <p className="text-sm text-slate-500">Time in status</p>
           <p className="mt-2 text-2xl font-bold">
@@ -67,9 +68,23 @@ export function OrderIntelligencePanel({
         </div>
 
         <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
-          <p className="text-sm text-slate-500">Activity count</p>
+          <p className="text-sm text-slate-500">Status moves</p>
           <p className="mt-2 text-2xl font-bold">
-            {intelligence.signals.activityCount}
+            {intelligence.signals.statusChangeCount}
+          </p>
+        </div>
+
+        <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+          <p className="text-sm text-slate-500">Regressions</p>
+          <p className="mt-2 text-2xl font-bold">
+            {intelligence.signals.regressionCount}
+          </p>
+        </div>
+
+        <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+          <p className="text-sm text-slate-500">Churn</p>
+          <p className="mt-2 text-2xl font-bold">
+            {intelligence.signals.churnCount}
           </p>
         </div>
       </div>

@@ -16,6 +16,9 @@ export type OrderIntelligence = {
     status: OrderStatus;
     priority: OrderPriority;
     activityCount: number;
+    statusChangeCount: number;
+    regressionCount: number;
+    churnCount: number;
     lastActivityAt: string | null;
   };
 };

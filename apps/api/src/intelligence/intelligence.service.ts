@@ -6,6 +6,9 @@ import { PrismaService } from '../prisma/prisma.service';
 import { DashboardIntelligence } from './types/dashboard-intelligence.type';
 import { OrderIntelligence, RiskLevel } from './types/order-intelligence.type';
 
+const STATUS_CHANGE_ACTIONS = ['STATUS_CHANGED', 'STATUS_REGRESSION'];
+const REGRESSION_ACTION = 'STATUS_REGRESSION';
+
 type ActivityLogLike = {
   action: string;
   fromStatus: OrderStatus | null;
@@ -161,11 +164,19 @@ export class IntelligenceService {
   }
 
   analyzeOrder(order: OrderLike): OrderIntelligence {
-    const category = order.statusRef?.category ?? order.status;
-
     const sortedLogs = [...order.activityLogs].sort(
       (a, b) => a.createdAt.getTime() - b.createdAt.getTime(),
     );
+
+    const statusChangeCount = sortedLogs.filter((log) =>
+      STATUS_CHANGE_ACTIONS.includes(log.action),
+    ).length;
+
+    const regressionCount = sortedLogs.filter(
+      (log) => log.action === REGRESSION_ACTION,
+    ).length;
+
+    const churnCount = Math.max(statusChangeCount - 1, 0);
 
     const currentStatusStartedAt = this.getCurrentStatusStartedAt(
       order,
@@ -174,6 +185,9 @@ export class IntelligenceService {
 
     const now = new Date();
 
+    const orderAgeMs = now.getTime() - order.createdAt.getTime();
+    const orderAgeHours = Math.round(orderAgeMs / HOURS);
+
     const timeInCurrentStatusMs =
       now.getTime() - currentStatusStartedAt.getTime();
 
@@ -181,8 +195,6 @@ export class IntelligenceService {
 
     const reasons: string[] = [];
     const recommendedActions: string[] = [];
-    const orderAgeMs = now.getTime() - order.createdAt.getTime();
-    const orderAgeHours = Math.round(orderAgeMs / HOURS);
 
     let riskScore = 0;
 
@@ -229,8 +241,40 @@ export class IntelligenceService {
       recommendedActions.push('Add an update or confirm whether work started.');
     }
 
-    if (category === 'DONE' || category === 'CANCELED') {
-      riskScore = Math.min(riskScore, 10);
+    if (regressionCount > 0) {
+      const regressionRisk = Math.min(regressionCount * 15, 45);
+
+      riskScore += regressionRisk;
+
+      reasons.push(
+        `Order has regressed ${regressionCount} time(s), indicating possible rework or unclear requirements.`,
+      );
+
+      recommendedActions.push(
+        'Review why the order moved backward and clarify the next required step.',
+      );
+    }
+
+    if (churnCount >= 3) {
+      riskScore += 20;
+
+      reasons.push(
+        `Order has high workflow churn with ${statusChangeCount} status movement(s).`,
+      );
+
+      recommendedActions.push(
+        'Confirm ownership and reduce unnecessary status cycling.',
+      );
+    } else if (churnCount >= 1) {
+      riskScore += 10;
+
+      reasons.push(
+        `Order has changed status ${statusChangeCount} time(s), suggesting some workflow instability.`,
+      );
+
+      recommendedActions.push(
+        'Check whether the workflow path is clear for this order.',
+      );
     }
 
     if (order.status === OrderStatus.DONE) {
@@ -273,6 +317,9 @@ export class IntelligenceService {
         status: order.status,
         priority: order.priority,
         activityCount: order.activityLogs.length,
+        statusChangeCount,
+        regressionCount,
+        churnCount,
         lastActivityAt:
           sortedLogs.length > 0
             ? sortedLogs[sortedLogs.length - 1].createdAt.toISOString()
