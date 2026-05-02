@@ -1,3 +1,4 @@
+import { UserRole } from './invite';
 import type { WorkflowStatus } from './workflow';
 
 export type OrderStatus = 'OPEN' | 'IN_PROGRESS' | 'DONE' | 'CANCELED';
@@ -10,7 +11,7 @@ export type OrderUser = {
   id: string;
   name: string;
   email: string;
-  role: string;
+  role: UserRole
 };
 
 export type Order = {
@@ -108,4 +109,16 @@ export type DashboardIntelligence = {
   };
   focusOrders: DashboardOrderSignal[];
   recommendedActions: string[];
+};
+
+export type OrderAssignee = {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+};
+
+export type AssignOrderInput = {
+  assigneeId?: string | null;
+  reason?: string;
 };

@@ -13,6 +13,10 @@ import { OrderIntelligencePanel } from '@/components/orders/order-intelligence-p
 
 import { formatSystemLabel } from '@/lib/format';
 
+import { assignOrder } from '@/lib/orders';
+import { getOrganizationMembers } from '@/lib/organizations';
+import type { OrganizationMember } from '@/types/organization';
+
 export default function OrderDetailPage() {
   const params = useParams();
   const id = params.id as string;
@@ -23,20 +27,25 @@ export default function OrderDetailPage() {
   const [commentError, setCommentError] = useState('');
   
   const [order, setOrder] = useState<Order | null>(null);
-  const [errors, setErrors] = useState('');
+  const [members, setMembers] = useState<OrganizationMember[]>([]);
+  const [isAssigning, setIsAssigning] = useState(false);
+  
+  const [error, setError] = useState('');
 
   useEffect(() => {
     async function load() {
       try {
-        const [data, commentList] = await Promise.all([
+        const [data, commentList, membersData] = await Promise.all([
         getOrderById(id),
         getOrderComments(id),
+        getOrganizationMembers(),
       ]);
 
       setOrder(data);
       setComments(commentList);
+      setMembers(membersData);
       } catch (err) {
-        setErrors(err instanceof Error ? err.message : 'Failed to load Order detail')
+        setError(err instanceof Error ? err.message : 'Failed to load Order detail')
       }
     }
 
@@ -65,8 +74,29 @@ export default function OrderDetailPage() {
     }
   }
 
-  if (errors) {
-    return <p className="text-slate-800">{errors}</p>
+  async function handleAssigneeChange(assigneeId: string) {
+    if (!order) return;
+
+    setIsAssigning(true);
+    setError('');
+
+    try {
+      const updatedOrder = await assignOrder(order.id, {
+        assigneeId: assigneeId || null,
+      });
+
+      setOrder(updatedOrder);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'Failed to assign order',
+      );
+    } finally {
+      setIsAssigning(false);
+    }
+  }
+
+  if (error) {
+    return <p className="text-slate-800">{error}</p>
     
   } else if (!order) {
     return <p className="text-slate-800">...Loading</p>
@@ -78,9 +108,43 @@ export default function OrderDetailPage() {
 
       <p className="text-slate-400 mb-6">{order.description}</p>
 
-      <div className="mb-6">
+      <div className="mb-6 space-y-3">
         <p>Status: {order.status}</p>
         <p>Priority: {order.priority}</p>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium text-slate-300">
+            Assignee
+          </label>
+
+          <select
+            className="w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-slate-400"
+            value={order.assigneeId ?? ''}
+            disabled={isAssigning}
+            onChange={(event) => handleAssigneeChange(event.target.value)}
+          >
+            <option value="">Unassigned</option>
+
+            {members.map((member) => (
+              <option key={member.id} value={member.id}>
+                {member.name} — {member.email}
+              </option>
+            ))}
+          </select>
+
+          {order.assignee ? (
+            <p className="mt-2 text-sm text-slate-400">
+              Assigned to{' '}
+              <span className="font-medium text-white">
+                {order.assignee.name}
+              </span>
+            </p>
+          ) : (
+            <p className="mt-2 text-sm text-slate-500">
+              This order is currently unassigned.
+            </p>
+          )}
+        </div>
       </div>
 
       {order.intelligence ? (
@@ -158,7 +222,7 @@ export default function OrderDetailPage() {
       <h2 className="text-xl font-semibold mb-3">Activity Timeline</h2>
 
       <div className="space-y-3">
-        {order.activityLogs.map((log) => (
+        {(order.activityLogs ?? []).map((log) => (
           <div
             key={log.id}
             className="border border-slate-800 rounded p-3"

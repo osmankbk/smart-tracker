@@ -10,6 +10,7 @@ import { UpdateOrderDto } from './dto/update-order.dto';
 import { ORDER_ACTIVITY_ACTIONS } from './constants/order-activity-actions';
 
 import { IntelligenceService } from '../intelligence/intelligence.service';
+import { AssignOrderDto } from './dto/assign-order.dto';
 
 @Injectable()
 export class OrdersService {
@@ -315,6 +316,122 @@ export class OrdersService {
             },
             orderBy: {
               createdAt: 'desc',
+            },
+          },
+        },
+      });
+    });
+  }
+
+  async assignOrder(
+    orderId: string,
+    dto: AssignOrderDto,
+    actor: {
+      id: string;
+      organizationId: string | null;
+    },
+  ) {
+    if (!actor.organizationId) {
+      throw new BadRequestException('User does not belong to an organization');
+    }
+
+    const order = await this.prisma.order.findFirst({
+      where: {
+        id: orderId,
+        organizationId: actor.organizationId,
+      },
+      include: {
+        assignee: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    if (!order) {
+      throw new NotFoundException('Order not found');
+    }
+
+    let nextAssignee: {
+      id: string;
+      name: string;
+      email: string;
+    } | null = null;
+
+    if (dto.assigneeId) {
+      nextAssignee = await this.prisma.user.findFirst({
+        where: {
+          id: dto.assigneeId,
+          organizationId: actor.organizationId,
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
+      });
+
+      if (!nextAssignee) {
+        throw new BadRequestException(
+          'Assignee must belong to your organization',
+        );
+      }
+    }
+
+    const previousAssigneeName = order.assignee?.name ?? 'Unassigned';
+    const nextAssigneeName = nextAssignee?.name ?? 'Unassigned';
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.order.update({
+        where: {
+          id: order.id,
+        },
+        data: {
+          assigneeId: dto.assigneeId ?? null,
+        },
+      });
+
+      await tx.activityLog.create({
+        data: {
+          orderId: order.id,
+          actorId: actor.id,
+          action: 'ASSIGNEE_CHANGED',
+          reason:
+            dto.reason ??
+            `Assignment changed from ${previousAssigneeName} to ${nextAssigneeName}`,
+        },
+      });
+
+      return tx.order.findUniqueOrThrow({
+        where: {
+          id: order.id,
+        },
+        include: {
+          assignee: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              role: true,
+            },
+          },
+          statusRef: true,
+          activityLogs: {
+            orderBy: {
+              createdAt: 'desc',
+            },
+            include: {
+              actor: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  role: true,
+                },
+              },
             },
           },
         },

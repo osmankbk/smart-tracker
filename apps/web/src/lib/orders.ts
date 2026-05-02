@@ -1,6 +1,6 @@
 import { apiFetch } from './api';
 import { getAccessToken } from './auth';
-import type { CreateOrderInput, Order, UpdateOrderInput } from '@/types/order';
+import type { AssignOrderInput, CreateOrderInput, Order, UpdateOrderInput } from '@/types/order';
 
 function requireAccessToken() {
   const token = getAccessToken();
@@ -54,5 +54,15 @@ export async function cancelOrder(id: string) {
   return apiFetch<Order>(`/api/v1/orders/${id}`, {
     method: 'DELETE',
     token,
+  });
+}
+
+export async function assignOrder(orderId: string, input: AssignOrderInput) {
+  const token = requireAccessToken();
+
+  return apiFetch<Order>(`/api/v1/orders/${orderId}/assignee`, {
+    method: 'PATCH',
+    token,
+    body: JSON.stringify(input),
   });
 }

@@ -14,6 +14,7 @@ import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { OrdersService } from './orders.service';
 import * as currentUserDecorator from '../auth/decorators/current-user.decorator';
+import { AssignOrderDto } from './dto/assign-order.dto';
 
 @Controller({
   path: 'orders',
@@ -69,5 +70,15 @@ export class OrdersController {
     @currentUserDecorator.CurrentUser() user: currentUserDecorator.AuthUser,
   ) {
     return this.ordersService.cancel(id, user.id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch(':id/assignee')
+  assignOrder(
+    @Param('id') id: string,
+    @Body() dto: AssignOrderDto,
+    @currentUserDecorator.CurrentUser() user: currentUserDecorator.AuthUser,
+  ) {
+    return this.ordersService.assignOrder(id, dto, user);
   }
 }
