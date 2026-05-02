@@ -109,11 +109,14 @@ export type DashboardIntelligence = {
     unassignedOrders: number;
     highRiskUnassignedOrders: number;
   };
-
+  assignmentSuggestions: AssignmentSuggestion[];
   workload: {
     assigneeId: string;
+    assigneeName: string;
+    assigneeEmail: string;
     count: number;
   }[];
+
   workloadStats: {
     avg: number;
     max: number;
@@ -134,4 +137,13 @@ export type OrderAssignee = {
 export type AssignOrderInput = {
   assigneeId?: string | null;
   reason?: string;
+};
+
+export type AssignmentSuggestion = {
+  orderId: string;
+  orderTitle: string;
+  suggestedAssigneeId: string;
+  suggestedAssigneeName: string;
+  suggestedAssigneeEmail: string;
+  reason: string;
 };

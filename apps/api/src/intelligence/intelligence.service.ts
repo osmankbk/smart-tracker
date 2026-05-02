@@ -17,6 +17,8 @@ type ActivityLogLike = {
 };
 
 type OrderLike = {
+  title?: string;
+  id?: string;
   status: OrderStatus;
   priority: OrderPriority;
   createdAt: Date;
@@ -77,6 +79,18 @@ export class IntelligenceService {
       },
     });
 
+    const members = await this.prisma.user.findMany({
+      where: {
+        organizationId,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+      },
+    });
+
     const workloadMap: Record<string, number> = {};
 
     const analyzedOrders = orders.map((order) => ({
@@ -95,25 +109,59 @@ export class IntelligenceService {
 
       workloadMap[order.assigneeId] = (workloadMap[order.assigneeId] ?? 0) + 1;
     });
-    const workload = Object.entries(workloadMap).map(([assigneeId, count]) => ({
-      assigneeId,
-      count,
+    const workload = members.map((member) => ({
+      assigneeId: member.id,
+      assigneeName: member.name,
+      assigneeEmail: member.email,
+      count: analyzedOrders.filter((order) => order.assigneeId === member.id)
+        .length,
     }));
 
-    const workloadCounts = workload.map((w) => w.count);
+    const workloadCounts = workload.map((item) => item.count);
 
     const avgWorkload =
       workloadCounts.length > 0
-        ? workloadCounts.reduce((a, b) => a + b, 0) / workloadCounts.length
+        ? workloadCounts.reduce((sum, count) => sum + count, 0) /
+          workloadCounts.length
         : 0;
 
-    const maxWorkload = Math.max(0, ...workloadCounts);
-    const minWorkload = Math.min(...workloadCounts, 0);
-    let isImbalanced = false;
+    const maxWorkload =
+      workloadCounts.length > 0 ? Math.max(...workloadCounts) : 0;
+    const minWorkload =
+      workloadCounts.length > 0 ? Math.min(...workloadCounts) : 0;
 
-    if (workload.length >= 2) {
-      isImbalanced = maxWorkload - avgWorkload >= 2;
-    }
+    const isImbalanced = workload.length >= 2 && maxWorkload - minWorkload >= 2;
+
+    const availableMembers = workload
+      .filter((member) => member.assigneeId)
+      .sort((a, b) => a.count - b.count);
+
+    const assignmentSuggestions = analyzedOrders
+      .filter(
+        (order) =>
+          !order.assigneeId &&
+          ['MEDIUM', 'HIGH', 'CRITICAL'].includes(order.intelligence.riskLevel),
+      )
+      .slice(0, 5)
+      .map((order) => {
+        const suggestedAssignee = availableMembers[0];
+
+        if (!suggestedAssignee) {
+          return null;
+        }
+
+        return {
+          orderId: order.id,
+          orderTitle: order.title,
+          suggestedAssigneeId: suggestedAssignee.assigneeId,
+          suggestedAssigneeName: suggestedAssignee.assigneeName,
+          suggestedAssigneeEmail: suggestedAssignee.assigneeEmail,
+          reason: `${suggestedAssignee.assigneeName} currently has the lightest workload with ${suggestedAssignee.count} assigned order(s).`,
+        };
+      })
+      .filter((suggestion): suggestion is NonNullable<typeof suggestion> =>
+        Boolean(suggestion),
+      );
 
     const stuckOrders = analyzedOrders.filter(
       (order) => order.intelligence.isStuck,
@@ -148,7 +196,6 @@ export class IntelligenceService {
 
     return {
       generatedAt: new Date().toISOString(),
-
       summary: this.buildBriefSummary({
         totalOrders: analyzedOrders.length,
         stuckOrders: stuckOrders.length,
@@ -173,7 +220,6 @@ export class IntelligenceService {
         highRiskOrders: highRiskOrders.length,
         criticalRiskOrders: criticalRiskOrders.length,
 
-        // existing from Section 32
         unassignedOrders: unassignedOrders.length,
         highRiskUnassignedOrders: highRiskUnassignedOrders.length,
       },
@@ -186,9 +232,9 @@ export class IntelligenceService {
         criticalRiskOrders: criticalRiskOrders.length,
         highRiskUnassignedOrders: highRiskUnassignedOrders.length,
         isImbalanced,
+        assignmentSuggestionCount: assignmentSuggestions.length,
       }),
 
-      // 👇 THIS IS YOUR NEW SECTION 33 ADDITION
       workload,
       workloadStats: {
         avg: avgWorkload,
@@ -196,6 +242,7 @@ export class IntelligenceService {
         min: minWorkload,
         isImbalanced,
       },
+      assignmentSuggestions,
     };
   }
 
@@ -235,8 +282,15 @@ export class IntelligenceService {
     criticalRiskOrders: number;
     highRiskUnassignedOrders: number;
     isImbalanced: boolean;
+    assignmentSuggestionCount: number;
   }) {
     const actions: string[] = [];
+
+    if (input.assignmentSuggestionCount > 0) {
+      actions.push(
+        'Review smart assignment suggestions for unassigned risk-bearing orders.',
+      );
+    }
 
     if (input.highRiskUnassignedOrders > 0) {
       actions.push(

@@ -108,19 +108,56 @@ export default function DashboardPage() {
             ) : (
               <div className="space-y-3">
                 {brief.workload.map((w) => (
+                  
                   <div
                     key={w.assigneeId}
                     className="rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-slate-300"
                   >
-                    {w.assigneeId} — {w.count} order(s)
+                    {w.assigneeName ?? w.assigneeEmail} — {w.count} order(s)
                   </div>
-                ))}
+                )
+                )}
               </div>
             )}
 
             {brief.workloadStats.isImbalanced && (
               <div className="mt-4 rounded-xl border border-yellow-800 bg-yellow-950 px-4 py-3 text-sm text-yellow-300">
                 ⚠️ Workload is unevenly distributed across the team.
+              </div>
+            )}
+          </section>
+
+          <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+            <h2 className="mb-4 text-xl font-semibold">Smart Assignment Suggestions</h2>
+
+            {brief.assignmentSuggestions.length === 0 ? (
+              <p className="text-slate-400">
+                No assignment suggestions right now.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {brief.assignmentSuggestions.map((suggestion) => (
+                  <Link
+                    key={suggestion.orderId}
+                    href={`/orders/${suggestion.orderId}`}
+                    className="block rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 hover:border-slate-600"
+                  >
+                    <p className="font-semibold text-slate-200">
+                      {suggestion.orderTitle}
+                    </p>
+
+                    <p className="mt-2 text-sm text-slate-300">
+                      Suggested owner:{' '}
+                      <span className="font-medium text-white">
+                        {suggestion.suggestedAssigneeName}
+                      </span>
+                    </p>
+
+                    <p className="mt-1 text-sm text-slate-500">
+                      {suggestion.reason}
+                    </p>
+                  </Link>
+                ))}
               </div>
             )}
           </section>

@@ -39,4 +39,14 @@ export type DashboardIntelligence = {
     min: number;
     isImbalanced: boolean;
   };
+  assignmentSuggestions: AssignmentSuggestion[];
+};
+
+export type AssignmentSuggestion = {
+  orderId: string;
+  orderTitle: string;
+  suggestedAssigneeId: string;
+  suggestedAssigneeName: string;
+  suggestedAssigneeEmail: string;
+  reason: string;
 };
