@@ -15,6 +15,7 @@ export default function RegisterPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('Password123!');
+  const [organizationName, setOrganizationName] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -29,6 +30,7 @@ export default function RegisterPage() {
         name,
         email,
         password,
+        organizationName
       });
 
       setAuth(authResponse);
@@ -59,6 +61,20 @@ export default function RegisterPage() {
               value={name}
               onChange={(event) => setName(event.target.value)}
               type="text"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              Organization Name
+            </label>
+            <input
+              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-slate-400"
+              value={organizationName}
+              onChange={(event) => setOrganizationName(event.target.value)}
+              type="text"
+              placeholder="Acme Operations"
               required
             />
           </div>
