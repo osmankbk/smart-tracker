@@ -12,6 +12,7 @@ import { IntelligenceModule } from './intelligence/intelligence.module';
 import { WorkflowsModule } from './workflows/workflows.module';
 import { CommentsModule } from './comments/comments.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { InvitesModule } from './invites/invites.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { NotificationsModule } from './notifications/notifications.module';
     WorkflowsModule,
     CommentsModule,
     NotificationsModule,
+    InvitesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

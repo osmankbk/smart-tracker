@@ -47,6 +47,7 @@ model User {
 
   notifications      Notification[] @relation("NotificationUser")
   actorNotifications Notification[] @relation("NotificationActor")
+  sentInvites OrganizationInvite[]
 }
 
 model Order {
@@ -168,6 +169,7 @@ model Organization {
   orders    Order[]
   workflows Workflow[]
   notifications Notification[]
+  invites OrganizationInvite[]
 }
 
 model Comment {
@@ -210,6 +212,28 @@ model Notification {
   actor          User?        @relation("NotificationActor", fields: [actorId], references: [id])
   order          Order?       @relation(fields: [orderId], references: [id])
   comment        Comment?     @relation(fields: [commentId], references: [id])
+}
+
+model OrganizationInvite {
+  id             String   @id @default(cuid())
+  organizationId String
+
+  email          String
+  role           UserRole @default(MEMBER)
+
+  token          String   @unique
+  acceptedAt     DateTime?
+  expiresAt      DateTime
+
+  invitedById    String?
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  invitedBy      User?        @relation(fields: [invitedById], references: [id])
+
+  @@unique([organizationId, email])
 }
 
 enum NotificationType {

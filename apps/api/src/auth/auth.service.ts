@@ -170,7 +170,7 @@ export class AuthService {
     return this.buildAuthResponse(user);
   }
 
-  private buildAuthResponse(user: {
+  buildAuthResponse(user: {
     id: string;
     name: string;
     email: string;
