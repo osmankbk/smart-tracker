@@ -2,7 +2,10 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { ReactNode, useEffect } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
+
+import { getNotifications } from '@/lib/notifications';
+import type { Notification } from '@/types/notification';
 
 import { useAuth } from '@/hooks/use-auth';
 
@@ -25,13 +28,30 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
 
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+
   const { user, isLoading, isAuthenticated, logout } = useAuth();
 
+  const unreadCount = notifications.filter(
+    (notification) => !notification.readAt,
+  ).length;
+
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      router.push('/login');
+    async function loadNotifications() {
+      if (!isAuthenticated) {
+        return;
+      }
+
+      try {
+        const notificationList = await getNotifications();
+        setNotifications(notificationList);
+      } catch {
+        setNotifications([]);
+      }
     }
-  }, [isLoading, isAuthenticated, router]);
+
+    loadNotifications();
+  }, [isAuthenticated]);
 
   function handleLogout() {
     logout();
@@ -83,6 +103,14 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 </Link>
               );
             })}
+
+            <Link
+              href="/notifications"
+              className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-medium text-slate-200 hover:bg-slate-900"
+            >
+              Notifications
+              {unreadCount > 0 ? ` (${unreadCount})` : ''}
+            </Link>
           </nav>
 
           <div className="flex items-center gap-3">

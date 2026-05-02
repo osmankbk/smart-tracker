@@ -4,6 +4,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 
+import { NotificationsService } from '../notifications/notifications.service';
+
 import { ORDER_ACTIVITY_ACTIONS } from 'src/orders/constants/order-activity-actions';
 
 import { PrismaService } from '../prisma/prisma.service';
@@ -11,7 +13,18 @@ import { CreateCommentDto } from './dto/create-comment.dto';
 
 @Injectable()
 export class CommentsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationService: NotificationsService,
+  ) {}
+
+  private extractMentionTokens(body: string) {
+    const matches = body.match(/@[\w.-]+/g) ?? [];
+
+    return [
+      ...new Set(matches.map((match: string) => match.slice(1).toLowerCase())),
+    ];
+  }
 
   async findForOrder(orderId: string, organizationId: string | null) {
     if (!organizationId) {
@@ -56,6 +69,8 @@ export class CommentsService {
     authorId: string,
     organizationId: string | null,
   ) {
+    const mentionTokens = this.extractMentionTokens(dto.body);
+
     if (!organizationId) {
       throw new BadRequestException('User does not belong to an organization');
     }
@@ -98,6 +113,39 @@ export class CommentsService {
           action: ORDER_ACTIVITY_ACTIONS.COMMENT_ADDED,
         },
       });
+
+      if (mentionTokens.length > 0) {
+        const mentionedUsers = await tx.user.findMany({
+          where: {
+            organizationId,
+            OR: mentionTokens.map((token) => ({
+              email: {
+                startsWith: token,
+                mode: 'insensitive',
+              },
+            })),
+          },
+        });
+
+        for (const mentionedUser of mentionedUsers) {
+          if (mentionedUser.id === authorId) {
+            continue;
+          }
+
+          await tx.notification.create({
+            data: {
+              organizationId,
+              userId: mentionedUser.id,
+              actorId: authorId,
+              orderId,
+              commentId: comment.id,
+              type: 'MENTION',
+              title: `${comment.author.name || comment.author.email} mentioned you`,
+              body: `You were mentioned on "${order.title}".`,
+            },
+          });
+        }
+      }
 
       return comment;
     });

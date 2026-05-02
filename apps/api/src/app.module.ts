@@ -11,6 +11,7 @@ import { AuthModule } from './auth/auth.module';
 import { IntelligenceModule } from './intelligence/intelligence.module';
 import { WorkflowsModule } from './workflows/workflows.module';
 import { CommentsModule } from './comments/comments.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { CommentsModule } from './comments/comments.module';
     IntelligenceModule,
     WorkflowsModule,
     CommentsModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
