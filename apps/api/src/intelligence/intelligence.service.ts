@@ -22,6 +22,7 @@ type OrderLike = {
   createdAt: Date;
   updatedAt: Date;
   activityLogs: ActivityLogLike[];
+  assigneeId?: string | null;
   statusRef?: {
     id: string;
     name: string;
@@ -81,6 +82,7 @@ export class IntelligenceService {
       title: order.title,
       status: order.status,
       priority: order.priority,
+      assigneeId: order.assigneeId,
       createdAt: order.createdAt.toISOString(),
       updatedAt: order.updatedAt.toISOString(),
       intelligence: this.analyzeOrder(order),
@@ -96,6 +98,16 @@ export class IntelligenceService {
 
     const criticalRiskOrders = analyzedOrders.filter(
       (order) => order.intelligence.riskLevel === 'CRITICAL',
+    );
+
+    const unassignedOrders = analyzedOrders.filter(
+      (order) => !order.assigneeId,
+    );
+
+    const highRiskUnassignedOrders = analyzedOrders.filter(
+      (order) =>
+        !order.assigneeId &&
+        ['HIGH', 'CRITICAL'].includes(order.intelligence.riskLevel),
     );
 
     const focusOrders = analyzedOrders
@@ -114,6 +126,7 @@ export class IntelligenceService {
         stuckOrders: stuckOrders.length,
         highRiskOrders: highRiskOrders.length,
         criticalRiskOrders: criticalRiskOrders.length,
+        highRiskUnassignedOrders: highRiskUnassignedOrders.length,
       }),
       metrics: {
         totalOrders: analyzedOrders.length,
@@ -130,12 +143,15 @@ export class IntelligenceService {
         stuckOrders: stuckOrders.length,
         highRiskOrders: highRiskOrders.length,
         criticalRiskOrders: criticalRiskOrders.length,
+        unassignedOrders: unassignedOrders.length,
+        highRiskUnassignedOrders: highRiskUnassignedOrders.length,
       },
       focusOrders,
       recommendedActions: this.buildDashboardRecommendations({
         stuckOrders: stuckOrders.length,
         highRiskOrders: highRiskOrders.length,
         criticalRiskOrders: criticalRiskOrders.length,
+        highRiskUnassignedOrders: highRiskUnassignedOrders.length,
       }),
     };
   }
@@ -145,9 +161,14 @@ export class IntelligenceService {
     stuckOrders: number;
     highRiskOrders: number;
     criticalRiskOrders: number;
+    highRiskUnassignedOrders: number;
   }) {
     if (input.totalOrders === 0) {
       return 'No active operational work is currently being tracked.';
+    }
+
+    if (input.highRiskUnassignedOrders > 0) {
+      return `${input.highRiskUnassignedOrders} high-risk unassigned order(s) need ownership assigned.`;
     }
 
     if (input.criticalRiskOrders > 0) {
@@ -169,8 +190,15 @@ export class IntelligenceService {
     stuckOrders: number;
     highRiskOrders: number;
     criticalRiskOrders: number;
+    highRiskUnassignedOrders: number;
   }) {
     const actions: string[] = [];
+
+    if (input.highRiskUnassignedOrders > 0) {
+      actions.push(
+        'Assign owners to high-risk unassigned orders before reviewing lower-risk work.',
+      );
+    }
 
     if (input.criticalRiskOrders > 0) {
       actions.push('Review critical-risk orders before handling routine work.');
@@ -233,6 +261,16 @@ export class IntelligenceService {
 
     let riskScore = 0;
 
+    const isUnassigned = !order.assigneeId;
+
+    if (isUnassigned) {
+      riskScore += 10;
+
+      reasons.push('Order is currently unassigned.');
+
+      recommendedActions.push('Assign this order to a team member.');
+    }
+
     const isStuck = this.isOrderStuck(
       statusCategory,
       order.priority,
@@ -253,6 +291,16 @@ export class IntelligenceService {
       riskScore += 25;
       reasons.push('Order is marked HIGH priority.');
       recommendedActions.push('Escalate visibility to a manager or lead.');
+    }
+
+    if (isUnassigned && isStuck) {
+      riskScore += 15;
+
+      reasons.push('Stuck order has no assigned owner.');
+
+      recommendedActions.push(
+        'Immediately assign an owner to unblock progress.',
+      );
     }
 
     if (statusCategory === 'TODO' && timeInCurrentStatusHours >= 24) {
@@ -345,6 +393,18 @@ export class IntelligenceService {
       );
     }
 
+    if (
+      isUnassigned &&
+      (this.getRiskLevel(riskScore) === 'HIGH' ||
+        this.getRiskLevel(riskScore) === 'CRITICAL')
+    ) {
+      reasons.push('High-risk order is not owned by anyone.');
+
+      recommendedActions.push(
+        'Assign ownership immediately to reduce operational risk.',
+      );
+    }
+
     riskScore = Math.min(riskScore, 100);
 
     if (reasons.length === 0) {
@@ -354,6 +414,7 @@ export class IntelligenceService {
     if (recommendedActions.length === 0) {
       recommendedActions.push('Continue monitoring normally.');
     }
+    const uniqueRecommendedActions = Array.from(new Set(recommendedActions));
 
     return {
       riskLevel: this.getRiskLevel(riskScore),
@@ -364,7 +425,7 @@ export class IntelligenceService {
       timeInCurrentStatusHours,
       isStuck,
       reasons,
-      recommendedActions,
+      recommendedActions: uniqueRecommendedActions,
       signals: {
         status: order.status,
         statusLabel,

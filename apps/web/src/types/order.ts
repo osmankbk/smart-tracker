@@ -106,6 +106,8 @@ export type DashboardIntelligence = {
     stuckOrders: number;
     highRiskOrders: number;
     criticalRiskOrders: number;
+    unassignedOrders: number;
+    highRiskUnassignedOrders: number;
   };
   focusOrders: DashboardOrderSignal[];
   recommendedActions: string[];

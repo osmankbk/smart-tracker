@@ -79,14 +79,25 @@ export default function DashboardPage() {
             />
           </section>
 
-          <section className="grid gap-4 md:grid-cols-4">
-            <MetricCard label="Open" value={brief.metrics.openOrders} />
+          <section className="grid gap-4 md:grid-cols-3">
+            <MetricCard label="Total" value={brief.metrics.totalOrders} />
+            <MetricCard label="Stuck" value={brief.metrics.stuckOrders} />
+            <MetricCard label="High Risk" value={brief.metrics.highRiskOrders} />
+          </section>
+
+          <section className="grid gap-4 md:grid-cols-3">
             <MetricCard
-              label="In Progress"
-              value={brief.metrics.inProgressOrders}
+              label="Critical"
+              value={brief.metrics.criticalRiskOrders}
             />
-            <MetricCard label="Done" value={brief.metrics.doneOrders} />
-            <MetricCard label="Canceled" value={brief.metrics.canceledOrders} />
+            <MetricCard
+              label="Unassigned"
+              value={brief.metrics.unassignedOrders}
+            />
+            <MetricCard
+              label="High Risk Unassigned"
+              value={brief.metrics.highRiskUnassignedOrders}
+            />
           </section>
 
           <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
