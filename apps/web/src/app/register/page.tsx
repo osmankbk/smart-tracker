@@ -15,6 +15,7 @@ export default function RegisterPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('Password123!');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [organizationName, setOrganizationName] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -26,6 +27,12 @@ export default function RegisterPage() {
     setIsLoading(true);
 
     try {
+      
+      if (password !== confirmPassword) {
+        setError('Passwords do not match');
+        return;
+      }
+
       const authResponse = await register({
         name,
         email,
@@ -98,6 +105,19 @@ export default function RegisterPage() {
               onChange={(event) => setPassword(event.target.value)}
               type="password"
               minLength={8}
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              Confirm Password
+            </label>
+            <input
+              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-slate-400"
+              value={confirmPassword}
+              onChange={(event) => setConfirmPassword(event.target.value)}
+              type="password"
               required
             />
           </div>

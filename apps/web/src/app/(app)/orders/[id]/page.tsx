@@ -11,6 +11,8 @@ import type { OrderComment } from '@/types/comment';
 
 import { OrderIntelligencePanel } from '@/components/orders/order-intelligence-panel';
 
+import { formatSystemLabel } from '@/lib/format';
+
 export default function OrderDetailPage() {
   const params = useParams();
   const id = params.id as string;
@@ -165,11 +167,11 @@ export default function OrderDetailPage() {
               {new Date(log.createdAt).toLocaleString()}
             </p>
 
-            <p className="font-medium">{log.action}</p>
+            <p className="font-medium">{formatSystemLabel(log.action)}</p>
 
             {log.fromStatus && log.toStatus ? (
               <p className="text-sm text-slate-300">
-                {log.fromStatus} → {log.toStatus}
+                {formatSystemLabel(log.fromStatus)} → {formatSystemLabel(log.toStatus)}
               </p>
             ) : null}
 
