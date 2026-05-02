@@ -1,11 +1,13 @@
 import { apiFetch } from './api';
 import { getAccessToken } from './auth';
+import type { AuthResponse } from '@/types/auth';
 import type {
   AcceptInviteInput,
   CreateInviteInput,
+  InvitePreview,
   OrganizationInvite,
+  CreateInviteResponse,
 } from '@/types/invite';
-import type { AuthResponse } from '@/types/auth';
 
 function requireAccessToken() {
   const token = getAccessToken();
@@ -28,11 +30,15 @@ export async function getInvites() {
 export async function createInvite(input: CreateInviteInput) {
   const token = requireAccessToken();
 
-  return apiFetch<OrganizationInvite>('/api/v1/invites', {
+  return apiFetch<CreateInviteResponse>('/api/v1/invites', {
     method: 'POST',
     token,
     body: JSON.stringify(input),
   });
+}
+
+export async function previewInvite(token: string) {
+  return apiFetch<InvitePreview>(`/api/v1/invites/${token}`);
 }
 
 export async function acceptInvite(token: string, input: AcceptInviteInput) {

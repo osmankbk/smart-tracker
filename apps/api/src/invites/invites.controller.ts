@@ -30,6 +30,11 @@ export class InvitesController {
     return this.invitesService.createInvite(dto, user);
   }
 
+  @Get(':token')
+  previewInvite(@Param('token') token: string) {
+    return this.invitesService.previewInvite(token);
+  }
+
   @Post(':token/accept')
   acceptInvite(@Param('token') token: string, @Body() dto: AcceptInviteDto) {
     return this.invitesService.acceptInvite(token, dto);

@@ -47,7 +47,9 @@ model User {
 
   notifications      Notification[] @relation("NotificationUser")
   actorNotifications Notification[] @relation("NotificationActor")
-  sentInvites OrganizationInvite[]
+
+  sentInvites     OrganizationInvite[] @relation("InvitesSent")
+  acceptedInvites OrganizationInvite[] @relation("InvitesAccepted")
 }
 
 model Order {
@@ -215,25 +217,31 @@ model Notification {
 }
 
 model OrganizationInvite {
-  id             String   @id @default(cuid())
+  id             String       @id @default(cuid())
   organizationId String
 
   email          String
-  role           UserRole @default(MEMBER)
+  role           UserRole     @default(MEMBER)
 
-  token          String   @unique
+  tokenHash      String       @unique
+  status         InviteStatus @default(PENDING)
+
   acceptedAt     DateTime?
   expiresAt      DateTime
 
   invitedById    String?
+  acceptedById   String?
 
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 
   organization   Organization @relation(fields: [organizationId], references: [id])
-  invitedBy      User?        @relation(fields: [invitedById], references: [id])
+  invitedBy      User?        @relation("InvitesSent", fields: [invitedById], references: [id])
+  acceptedBy     User?        @relation("InvitesAccepted", fields: [acceptedById], references: [id])
 
-  @@unique([organizationId, email])
+  @@index([organizationId])
+  @@index([email])
+  @@index([status])
 }
 
 enum NotificationType {
@@ -246,5 +254,12 @@ enum StatusCategory {
   REVIEW
   QA
   DONE
+  CANCELED
+}
+
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
   CANCELED
 }

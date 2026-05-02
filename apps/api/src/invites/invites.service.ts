@@ -1,12 +1,13 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { UserRole } from '@prisma/client';
+import { InviteStatus, UserRole } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
-import { randomBytes } from 'crypto';
+import { createHash, randomBytes } from 'crypto';
 
 import { AuthService } from '../auth/auth.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -36,40 +37,49 @@ export class InvitesService {
       throw new ForbiddenException('Only admins can invite users');
     }
 
+    const email = dto.email.toLowerCase().trim();
+
     const existingUser = await this.prisma.user.findUnique({
       where: {
-        email: dto.email,
+        email,
       },
     });
 
     if (existingUser) {
-      throw new BadRequestException('A user with this email already exists');
+      throw new ConflictException('A user with this email already exists');
+    }
+
+    const existingPendingInvite =
+      await this.prisma.organizationInvite.findFirst({
+        where: {
+          organizationId: actor.organizationId,
+          email,
+          status: InviteStatus.PENDING,
+          expiresAt: {
+            gt: new Date(),
+          },
+        },
+      });
+
+    if (existingPendingInvite) {
+      throw new ConflictException(
+        'A pending invite already exists for this email',
+      );
     }
 
     const token = randomBytes(32).toString('hex');
+    const tokenHash = this.hashToken(token);
 
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7);
 
-    return this.prisma.organizationInvite.upsert({
-      where: {
-        organizationId_email: {
-          organizationId: actor.organizationId,
-          email: dto.email,
-        },
-      },
-      update: {
-        role: dto.role ?? UserRole.MEMBER,
-        token,
-        acceptedAt: null,
-        expiresAt,
-        invitedById: actor.id,
-      },
-      create: {
+    const invite = await this.prisma.organizationInvite.create({
+      data: {
         organizationId: actor.organizationId,
-        email: dto.email,
+        email,
         role: dto.role ?? UserRole.MEMBER,
-        token,
+        tokenHash,
+        status: InviteStatus.PENDING,
         expiresAt,
         invitedById: actor.id,
       },
@@ -77,18 +87,63 @@ export class InvitesService {
         id: true,
         email: true,
         role: true,
-        token: true,
+        status: true,
         expiresAt: true,
         acceptedAt: true,
         createdAt: true,
       },
     });
+
+    return {
+      ...invite,
+      token,
+      inviteUrl: `/invite/${token}`,
+    };
   }
 
-  async acceptInvite(token: string, dto: AcceptInviteDto) {
+  async previewInvite(token: string) {
+    const tokenHash = this.hashToken(token);
+
     const invite = await this.prisma.organizationInvite.findUnique({
       where: {
-        token,
+        tokenHash,
+      },
+      include: {
+        organization: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
+      },
+    });
+
+    if (!invite) {
+      throw new NotFoundException('Invite not found');
+    }
+
+    if (invite.status !== InviteStatus.PENDING) {
+      throw new BadRequestException('Invite is no longer active');
+    }
+
+    if (invite.expiresAt < new Date()) {
+      throw new BadRequestException('Invite has expired');
+    }
+
+    return {
+      email: invite.email,
+      role: invite.role,
+      expiresAt: invite.expiresAt,
+      organization: invite.organization,
+    };
+  }
+  async acceptInvite(token: string, dto: AcceptInviteDto) {
+    const tokenHash = this.hashToken(token);
+
+    const invite = await this.prisma.organizationInvite.findUnique({
+      where: {
+        tokenHash,
       },
       include: {
         organization: true,
@@ -99,11 +154,20 @@ export class InvitesService {
       throw new NotFoundException('Invite not found');
     }
 
-    if (invite.acceptedAt) {
-      throw new BadRequestException('Invite has already been accepted');
+    if (invite.status !== InviteStatus.PENDING) {
+      throw new BadRequestException('Invite is no longer active');
     }
 
     if (invite.expiresAt < new Date()) {
+      await this.prisma.organizationInvite.update({
+        where: {
+          id: invite.id,
+        },
+        data: {
+          status: InviteStatus.EXPIRED,
+        },
+      });
+
       throw new BadRequestException('Invite has expired');
     }
 
@@ -114,15 +178,15 @@ export class InvitesService {
     });
 
     if (existingUser) {
-      throw new BadRequestException('A user with this email already exists');
+      throw new ConflictException('A user with this email already exists');
     }
 
-    const passwordHash = await bcrypt.hash(dto.password, 10);
+    const passwordHash = await bcrypt.hash(dto.password, 12);
 
     return this.prisma.$transaction(async (tx) => {
       const user = await tx.user.create({
         data: {
-          name: dto.name,
+          name: dto.name.trim(),
           email: invite.email,
           passwordHash,
           role: invite.role,
@@ -135,7 +199,9 @@ export class InvitesService {
           id: invite.id,
         },
         data: {
+          status: InviteStatus.ACCEPTED,
           acceptedAt: new Date(),
+          acceptedById: user.id,
         },
       });
 
@@ -166,10 +232,15 @@ export class InvitesService {
         id: true,
         email: true,
         role: true,
+        status: true,
         expiresAt: true,
         acceptedAt: true,
         createdAt: true,
       },
     });
+  }
+
+  private hashToken(token: string) {
+    return createHash('sha256').update(token).digest('hex');
   }
 }

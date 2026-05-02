@@ -3,13 +3,13 @@
 import { FormEvent, useEffect, useState } from 'react';
 
 import { createInvite, getInvites } from '@/lib/invites';
-import type { OrganizationInvite } from '@/types/invite';
+import type { OrganizationInvite, UserRole } from '@/types/invite';
 
 export default function InvitesPage() {
   const [invites, setInvites] = useState<OrganizationInvite[]>([]);
   const [email, setEmail] = useState('');
-  const [role, setRole] = useState('MEMBER');
-  const [latestInviteToken, setLatestInviteToken] = useState('');
+  const [role, setRole] = useState<UserRole>('MEMBER');
+  const [latestInviteUrl, setLatestInviteUrl] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
@@ -33,7 +33,7 @@ export default function InvitesPage() {
     event.preventDefault();
 
     setError('');
-    setLatestInviteToken('');
+    setLatestInviteUrl('');
     setIsCreating(true);
 
     try {
@@ -42,8 +42,10 @@ export default function InvitesPage() {
         role,
       });
 
-      setInvites((current) => [invite, ...current]);
-      setLatestInviteToken(invite.token ?? '');
+      const { token, inviteUrl, ...inviteListItem } = invite;
+
+      setInvites((current) => [inviteListItem, ...current]);
+      setLatestInviteUrl(`${window.location.origin}${inviteUrl}`);
       setEmail('');
       setRole('MEMBER');
     } catch (err) {
@@ -74,7 +76,10 @@ export default function InvitesPage() {
       <section className="mb-8 rounded-2xl border border-slate-800 bg-slate-900 p-6">
         <h2 className="mb-4 text-xl font-semibold">Create Invite</h2>
 
-        <form onSubmit={handleCreateInvite} className="grid gap-4 md:grid-cols-[1fr_180px_auto]">
+        <form
+          onSubmit={handleCreateInvite}
+          className="grid gap-4 md:grid-cols-[1fr_180px_auto]"
+        >
           <input
             className="rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-slate-400"
             value={email}
@@ -87,7 +92,7 @@ export default function InvitesPage() {
           <select
             className="rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-slate-400"
             value={role}
-            onChange={(event) => setRole(event.target.value)}
+            onChange={(event) => setRole(event.target.value as UserRole)}
           >
             <option value="MEMBER">MEMBER</option>
             <option value="MANAGER">MANAGER</option>
@@ -103,11 +108,11 @@ export default function InvitesPage() {
           </button>
         </form>
 
-        {latestInviteToken ? (
+        {latestInviteUrl ? (
           <div className="mt-5 rounded-xl border border-slate-700 bg-slate-950 p-4">
             <p className="mb-2 text-sm font-semibold">Temporary invite link</p>
             <p className="break-all text-sm text-slate-300">
-              http://localhost:3000/invite/{latestInviteToken}
+              {latestInviteUrl}
             </p>
             <p className="mt-2 text-xs text-slate-500">
               Email sending comes later. For now, copy this link manually.
@@ -117,7 +122,7 @@ export default function InvitesPage() {
       </section>
 
       <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-        <h2 className="mb-4 text-xl font-semibold">Pending Invites</h2>
+        <h2 className="mb-4 text-xl font-semibold">Invites</h2>
 
         {isLoading ? (
           <p className="text-slate-400">Loading invites...</p>
@@ -136,9 +141,14 @@ export default function InvitesPage() {
                     <p className="text-sm text-slate-400">{invite.role}</p>
                   </div>
 
-                  <p className="text-sm text-slate-400">
-                    {invite.acceptedAt ? 'Accepted' : 'Pending'}
-                  </p>
+                  <div className="text-right">
+                    <p className="text-sm font-medium text-slate-300">
+                      {invite.status}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      Expires {new Date(invite.expiresAt).toLocaleDateString()}
+                    </p>
+                  </div>
                 </div>
               </div>
             ))}
