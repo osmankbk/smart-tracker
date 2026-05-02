@@ -64,6 +64,12 @@ export default function AcceptInvitePage() {
     }
   }
 
+  if (!invite && !isLoadingInvite) {
+    return (
+      <div>Invalid or expired invite</div>
+    );
+  }
+
   if (isLoadingInvite) {
     return (
       <main className="min-h-screen bg-slate-950 px-6 py-16 text-white">

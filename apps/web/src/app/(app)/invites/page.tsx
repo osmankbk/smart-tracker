@@ -3,30 +3,40 @@
 import { FormEvent, useEffect, useState } from 'react';
 
 import { createInvite, getInvites } from '@/lib/invites';
+import { getOrganizationMembers } from '@/lib/organizations';
+import type { OrganizationMember } from '@/types/organization';
 import type { OrganizationInvite, UserRole } from '@/types/invite';
 
 export default function InvitesPage() {
+  const [members, setMembers] = useState<OrganizationMember[]>([]);
   const [invites, setInvites] = useState<OrganizationInvite[]>([]);
+
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<UserRole>('MEMBER');
   const [latestInviteUrl, setLatestInviteUrl] = useState('');
+
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
 
   useEffect(() => {
-    async function loadInvites() {
+    async function loadTeamData() {
       try {
-        const data = await getInvites();
-        setInvites(data);
+        const [membersData, invitesData] = await Promise.all([
+          getOrganizationMembers(),
+          getInvites(),
+        ]);
+
+        setMembers(membersData);
+        setInvites(invitesData);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load invites');
+        setError(err instanceof Error ? err.message : 'Failed to load team data');
       } finally {
         setIsLoading(false);
       }
     }
 
-    loadInvites();
+    loadTeamData();
   }, []);
 
   async function handleCreateInvite(event: FormEvent<HTMLFormElement>) {
@@ -55,15 +65,18 @@ export default function InvitesPage() {
     }
   }
 
+  const pendingInvites = invites.filter((invite) => invite.status === 'PENDING');
+  const acceptedInvites = invites.filter((invite) => invite.status === 'ACCEPTED');
+
   return (
     <div>
       <div className="mb-8">
         <p className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-400">
           Organization
         </p>
-        <h1 className="text-3xl font-bold">Invites</h1>
+        <h1 className="text-3xl font-bold">Team</h1>
         <p className="mt-2 text-slate-400">
-          Invite teammates into your Smart Tracker organization.
+          Manage your organization members and teammate invites.
         </p>
       </div>
 
@@ -72,6 +85,12 @@ export default function InvitesPage() {
           {error}
         </div>
       ) : null}
+
+      <section className="mb-8 grid gap-4 md:grid-cols-3">
+        <SummaryCard label="Members" value={members.length} />
+        <SummaryCard label="Pending Invites" value={pendingInvites.length} />
+        <SummaryCard label="Accepted Invites" value={acceptedInvites.length} />
+      </section>
 
       <section className="mb-8 rounded-2xl border border-slate-800 bg-slate-900 p-6">
         <h2 className="mb-4 text-xl font-semibold">Create Invite</h2>
@@ -110,15 +129,64 @@ export default function InvitesPage() {
 
         {latestInviteUrl ? (
           <div className="mt-5 rounded-xl border border-slate-700 bg-slate-950 p-4">
-            <p className="mb-2 text-sm font-semibold">Temporary invite link</p>
-            <p className="break-all text-sm text-slate-300">
-              {latestInviteUrl}
-            </p>
-            <p className="mt-2 text-xs text-slate-500">
-              Email sending comes later. For now, copy this link manually.
-            </p>
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="mb-2 text-sm font-semibold">
+                  Temporary invite link
+                </p>
+                <p className="break-all text-sm text-slate-300">
+                  {latestInviteUrl}
+                </p>
+                <p className="mt-2 text-xs text-slate-500">
+                  Email sending comes later. For now, copy this link manually.
+                </p>
+              </div>
+
+              <button
+                className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-medium text-slate-200 hover:bg-slate-800"
+                type="button"
+                onClick={() => navigator.clipboard.writeText(latestInviteUrl)}
+              >
+                Copy
+              </button>
+            </div>
           </div>
         ) : null}
+      </section>
+
+      <section className="mb-8 rounded-2xl border border-slate-800 bg-slate-900 p-6">
+        <h2 className="mb-4 text-xl font-semibold">Members</h2>
+
+        {isLoading ? (
+          <p className="text-slate-400">Loading members...</p>
+        ) : members.length === 0 ? (
+          <p className="text-slate-400">No members found.</p>
+        ) : (
+          <div className="space-y-3">
+            {members.map((member) => (
+              <div
+                key={member.id}
+                className="rounded-xl border border-slate-800 bg-slate-950 p-4"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="font-semibold">{member.name}</p>
+                    <p className="text-sm text-slate-400">{member.email}</p>
+                  </div>
+
+                  <div className="text-right">
+                    <p className="text-sm font-medium text-slate-300">
+                      {member.role}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      Joined {new Date(member.createdAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </section>
 
       <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
@@ -142,10 +210,8 @@ export default function InvitesPage() {
                   </div>
 
                   <div className="text-right">
-                    <p className="text-sm font-medium text-slate-300">
-                      {invite.status}
-                    </p>
-                    <p className="text-xs text-slate-500">
+                    <StatusBadge status={invite.status} />
+                    <p className="mt-1 text-xs text-slate-500">
                       Expires {new Date(invite.expiresAt).toLocaleDateString()}
                     </p>
                   </div>
@@ -156,5 +222,31 @@ export default function InvitesPage() {
         )}
       </section>
     </div>
+  );
+}
+
+function SummaryCard({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+      <p className="text-sm font-medium text-slate-400">{label}</p>
+      <p className="mt-2 text-3xl font-bold text-white">{value}</p>
+    </div>
+  );
+}
+
+function StatusBadge({ status }: { status: OrganizationInvite['status'] }) {
+  const classNameByStatus: Record<OrganizationInvite['status'], string> = {
+    PENDING: 'border-yellow-800 bg-yellow-950 text-yellow-300',
+    ACCEPTED: 'border-green-800 bg-green-950 text-green-300',
+    EXPIRED: 'border-slate-700 bg-slate-900 text-slate-300',
+    CANCELED: 'border-red-800 bg-red-950 text-red-300',
+  };
+
+  return (
+    <span
+      className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${classNameByStatus[status]}`}
+    >
+      {status}
+    </span>
   );
 }

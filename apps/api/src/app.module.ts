@@ -13,6 +13,7 @@ import { WorkflowsModule } from './workflows/workflows.module';
 import { CommentsModule } from './comments/comments.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { InvitesModule } from './invites/invites.module';
+import { OrganizationsModule } from './organizations/organizations.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { InvitesModule } from './invites/invites.module';
     CommentsModule,
     NotificationsModule,
     InvitesModule,
+    OrganizationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
