@@ -77,6 +77,8 @@ export class IntelligenceService {
       },
     });
 
+    const workloadMap: Record<string, number> = {};
+
     const analyzedOrders = orders.map((order) => ({
       id: order.id,
       title: order.title,
@@ -87,6 +89,31 @@ export class IntelligenceService {
       updatedAt: order.updatedAt.toISOString(),
       intelligence: this.analyzeOrder(order),
     }));
+
+    analyzedOrders.forEach((order) => {
+      if (!order.assigneeId) return;
+
+      workloadMap[order.assigneeId] = (workloadMap[order.assigneeId] ?? 0) + 1;
+    });
+    const workload = Object.entries(workloadMap).map(([assigneeId, count]) => ({
+      assigneeId,
+      count,
+    }));
+
+    const workloadCounts = workload.map((w) => w.count);
+
+    const avgWorkload =
+      workloadCounts.length > 0
+        ? workloadCounts.reduce((a, b) => a + b, 0) / workloadCounts.length
+        : 0;
+
+    const maxWorkload = Math.max(0, ...workloadCounts);
+    const minWorkload = Math.min(...workloadCounts, 0);
+    let isImbalanced = false;
+
+    if (workload.length >= 2) {
+      isImbalanced = maxWorkload - avgWorkload >= 2;
+    }
 
     const stuckOrders = analyzedOrders.filter(
       (order) => order.intelligence.isStuck,
@@ -121,6 +148,7 @@ export class IntelligenceService {
 
     return {
       generatedAt: new Date().toISOString(),
+
       summary: this.buildBriefSummary({
         totalOrders: analyzedOrders.length,
         stuckOrders: stuckOrders.length,
@@ -128,6 +156,7 @@ export class IntelligenceService {
         criticalRiskOrders: criticalRiskOrders.length,
         highRiskUnassignedOrders: highRiskUnassignedOrders.length,
       }),
+
       metrics: {
         totalOrders: analyzedOrders.length,
         openOrders: analyzedOrders.filter((order) => order.status === 'OPEN')
@@ -143,16 +172,30 @@ export class IntelligenceService {
         stuckOrders: stuckOrders.length,
         highRiskOrders: highRiskOrders.length,
         criticalRiskOrders: criticalRiskOrders.length,
+
+        // existing from Section 32
         unassignedOrders: unassignedOrders.length,
         highRiskUnassignedOrders: highRiskUnassignedOrders.length,
       },
+
       focusOrders,
+
       recommendedActions: this.buildDashboardRecommendations({
         stuckOrders: stuckOrders.length,
         highRiskOrders: highRiskOrders.length,
         criticalRiskOrders: criticalRiskOrders.length,
         highRiskUnassignedOrders: highRiskUnassignedOrders.length,
+        isImbalanced,
       }),
+
+      // 👇 THIS IS YOUR NEW SECTION 33 ADDITION
+      workload,
+      workloadStats: {
+        avg: avgWorkload,
+        max: maxWorkload,
+        min: minWorkload,
+        isImbalanced,
+      },
     };
   }
 
@@ -191,12 +234,19 @@ export class IntelligenceService {
     highRiskOrders: number;
     criticalRiskOrders: number;
     highRiskUnassignedOrders: number;
+    isImbalanced: boolean;
   }) {
     const actions: string[] = [];
 
     if (input.highRiskUnassignedOrders > 0) {
       actions.push(
         'Assign owners to high-risk unassigned orders before reviewing lower-risk work.',
+      );
+    }
+
+    if (input.isImbalanced) {
+      actions.push(
+        'Workload is unevenly distributed across team members. Consider rebalancing assignments.',
       );
     }
 

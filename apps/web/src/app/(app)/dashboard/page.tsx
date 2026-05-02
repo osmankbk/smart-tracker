@@ -101,6 +101,31 @@ export default function DashboardPage() {
           </section>
 
           <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+            <h2 className="mb-4 text-xl font-semibold">Team Workload</h2>
+
+            {brief.workload.length === 0 ? (
+              <p className="text-slate-400">No assigned work yet.</p>
+            ) : (
+              <div className="space-y-3">
+                {brief.workload.map((w) => (
+                  <div
+                    key={w.assigneeId}
+                    className="rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-slate-300"
+                  >
+                    {w.assigneeId} — {w.count} order(s)
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {brief.workloadStats.isImbalanced && (
+              <div className="mt-4 rounded-xl border border-yellow-800 bg-yellow-950 px-4 py-3 text-sm text-yellow-300">
+                ⚠️ Workload is unevenly distributed across the team.
+              </div>
+            )}
+          </section>
+
+          <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
             <h2 className="mb-4 text-xl font-semibold">Recommended Actions</h2>
 
             <div className="space-y-3">

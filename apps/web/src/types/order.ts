@@ -109,6 +109,17 @@ export type DashboardIntelligence = {
     unassignedOrders: number;
     highRiskUnassignedOrders: number;
   };
+
+  workload: {
+    assigneeId: string;
+    count: number;
+  }[];
+  workloadStats: {
+    avg: number;
+    max: number;
+    min: number;
+    isImbalanced: boolean;
+  };
   focusOrders: DashboardOrderSignal[];
   recommendedActions: string[];
 };

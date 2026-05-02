@@ -27,4 +27,16 @@ export type DashboardIntelligence = {
   };
   focusOrders: DashboardOrderSignal[];
   recommendedActions: string[];
+
+  workload: {
+    assigneeId: string;
+    count: number;
+  }[];
+
+  workloadStats: {
+    avg: number;
+    max: number;
+    min: number;
+    isImbalanced: boolean;
+  };
 };
