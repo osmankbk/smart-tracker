@@ -588,14 +588,19 @@ export class IntelligenceService {
     recommendations: Recommendation[],
     recommendation: Recommendation,
   ) {
-    const exists = recommendations.some(
-      (item) =>
-        item.type === recommendation.type &&
-        item.message === recommendation.message,
+    const existingIndex = recommendations.findIndex(
+      (item) => item.type === recommendation.type,
     );
 
-    if (!exists) {
+    if (existingIndex === -1) {
       recommendations.push(recommendation);
+      return;
+    }
+
+    const existingRecommendation = recommendations[existingIndex];
+
+    if (recommendation.priority > existingRecommendation.priority) {
+      recommendations[existingIndex] = recommendation;
     }
   }
 
