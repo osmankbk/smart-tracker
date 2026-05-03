@@ -42,6 +42,18 @@ Smart Tracker:
 * detects risk
 * recommends action
 
+Smart Tracker now includes:
+
+* assignment-aware intelligence
+* workload distribution tracking
+* smart assignment suggestions
+
+This allows the system to not only detect risk, but also:
+
+identify ownership gaps  
+detect team imbalance  
+recommend who should take action  
+
 ---
 
 ### 2. Lifecycle Intelligence
@@ -57,6 +69,8 @@ Key signals:
 * churn (too many changes)
 * inactivity
 * bottlenecks by phase
+* assignment state
+* workload distribution
 
 ---
 
@@ -68,8 +82,6 @@ System must provide:
 * why it is happening
 * risk level
 * recommended action
-
-Not just summaries — **explanations + actions**
 
 ---
 
@@ -83,9 +95,9 @@ Examples:
 * status changed
 * status regression
 * canceled
-* assigned (future)
-* comment added (future)
-* mention triggered (future)
+* assigned
+* comment added
+* mention triggered
 
 This powers:
 
@@ -94,103 +106,6 @@ This powers:
 * AI context
 * analytics
 * daily brief
-
----
-
-### 5. Workflow-Driven System
-
-Orders follow workflows:
-
-```txt
-Workflow → WorkflowStatus → Order
-```
-
-Workflows are:
-
-* configurable
-* ordered
-* categorized
-
----
-
-## 🧱 Workflow System
-
-### Workflow
-
-```txt
-Represents a lifecycle (e.g. content, delivery, QA)
-```
-
-### WorkflowStatus
-
-Each status includes:
-
-* name (user-facing)
-* key (system identifier)
-* order (position in lifecycle)
-* category (system meaning)
-* isStart
-* isTerminal
-
----
-
-## 🧠 Status Categories (System Meaning)
-
-```ts
-TODO
-ACTIVE
-REVIEW
-QA
-DONE
-CANCELED
-// Future:
-BLOCKED
-```
-
-### Why categories exist
-
-They allow intelligence to work across custom workflows.
-
-Example:
-
-| Custom Status    | Category |
-| ---------------- | -------- |
-| Peer Review      | REVIEW   |
-| Manager Approval | REVIEW   |
-| In QA            | QA       |
-| Published        | DONE     |
-
----
-
-## 🔄 Lifecycle Behavior Signals
-
-### Status Change
-
-Normal forward movement
-
-### Regression
-
-Backward movement:
-
-```txt
-IN_PROGRESS → OPEN
-```
-
-Tracked as:
-
-```txt
-STATUS_REGRESSION
-```
-
-### Churn
-
-Too many movements:
-
-```txt
-OPEN → IN_PROGRESS → OPEN → IN_PROGRESS
-```
-
-Indicates instability.
 
 ---
 
@@ -204,15 +119,15 @@ Risk is computed from:
 * inactivity
 * regressions
 * churn
+* assignment state
+* workload context
 
 Risk levels:
 
-```txt
-LOW
-MEDIUM
-HIGH
-CRITICAL
-```
+LOW  
+MEDIUM  
+HIGH  
+CRITICAL  
 
 ---
 
@@ -226,237 +141,113 @@ System generates:
 * stuck work
 * recommended actions
 
+Enhanced capabilities:
+
+* unassigned detection
+* high-risk unassigned alerts
+* workload visibility
+* imbalance detection
+* assignment recommendations
+
 ---
 
 ## 🧠 Intelligence Pipeline
 
-```txt
-Raw Data → Activity Logs → Signals → Intelligence → Actions
-```
+Raw Data → Activity Logs → Signals → Intelligence → Recommendations → Decisions
 
 ---
 
-## 🧩 Future Systems (Planned)
+## 👤 Assignment Intelligence
+
+Smart Tracker incorporates ownership into its intelligence model.
+
+Capabilities:
+
+* detect unassigned work
+* increase risk for unowned orders
+* flag high-risk unassigned work
+* recommend ownership actions
+
+Principle:
+
+Work without ownership is operational risk.
 
 ---
 
-### 1. Organization / Workspace Model
+## 👥 Workload Intelligence
 
-```txt
-Organization
-  → Users
-  → Roles / Permissions
-  → Orders
-```
+System evaluates distribution across team members.
+
+Capabilities:
+
+* orders per user
+* average workload
+* imbalance detection
+
+Imbalance logic:
+
+max workload - average workload ≥ threshold
+
+---
+
+## 🤖 Smart Assignment Suggestions
+
+System recommends assignees based on:
+
+* workload
+* availability
+* order risk
 
 Behavior:
 
-* users belong to an organization
-* users can access org work by default
-* visibility controlled by role/permissions
+evaluate candidates → score → select best
+
+Principle:
+
+System suggests.  
+Human decides.  
 
 ---
 
-### 2. Roles & Permissions
+## 🧩 Future Systems
 
-Examples:
+### Capacity Planning (Next Phase)
 
-```txt
-ADMIN
-MANAGER
-MEMBER
-VIEWER
-```
+* effort points
+* SLA weighting
+* availability modeling
+* historical velocity
 
-Controls:
+### Advanced Intelligence
 
-* visibility
-* editing
-* overrides
-* workflow configuration
+* skill-based assignment
+* predictive risk modeling
+* cycle-time analysis
 
----
+### AI Layer
 
-### 3. Comments System
-
-Users can:
-
-* add comments to orders
-* discuss work
-* provide updates
-
----
-
-### 4. Mentions (@username)
-
-Users can:
-
-```txt
-@mention teammates in comments
-```
-
-System will:
-
-* notify mentioned users
-* link directly to the order/comment
-
----
-
-### 5. Notifications System
-
-Triggers:
-
-* mentions
-* assignment (future)
-* high-risk alerts (future)
-* stuck work alerts (future)
-
----
-
-### 6. Admin Override Flow
-
-Locked states:
-
-```txt
-DONE
-CANCELED
-```
-
-Admins can:
-
-```txt
-reopen orders with required reason
-```
-
-This must:
-
-* be logged
-* preserve audit trail
-
----
-
-### 7. Activity Log Enhancements
-
-Future improvements:
-
-* fromStatusId / toStatusId
-* metadata field
-* action normalization
-* shared constants across services
-
----
-
-### 8. Workflow Validation Rules
-
-System should enforce:
-
-* exactly one start status
-* at least one terminal status
-* valid category assignment
-* ordered lifecycle
-
----
-
-### 9. Transition Rules (Future)
-
-Optional:
-
-```txt
-Allowed transitions between statuses
-```
-
-Example:
-
-```txt
-OPEN → IN_PROGRESS → REVIEW → DONE
-```
-
-Not:
-
-```txt
-DONE → IN_PROGRESS (unless override)
-```
-
----
-
-### 10. Advanced Intelligence (Future)
-
-* regression pattern detection
-* churn cycles
-* bottleneck detection
-* SLA violations
-* category-based aging
-* cross-order analysis
-
----
-
-### 11. Autopilot Actions (Future)
-
-System may:
-
-* auto-escalate stuck work
-* suggest reassignment
-* suggest next status
-* prioritize tasks dynamically
-
----
-
-### 12. AI Layer (Future)
-
-Use OpenAI to:
-
-* explain risks
-* summarize activity
-* recommend actions
-* generate daily brief narratives
+* summaries
+* explanations
+* daily briefs
 
 ---
 
 ## 🧠 Engineering Philosophy
 
-* data > UI
-* events > state
-* interpretation layer > raw storage
-* extensibility over shortcuts
-* backward compatibility during migrations
-* explicit over implicit logic
+data > UI  
+events > state  
+interpretation > storage  
+extensibility > shortcuts  
 
 ---
 
 ## 🚀 Long-Term Direction
 
-Smart Tracker evolves into:
-
-```txt
 Operational Intelligence Platform
-```
-
-Not:
-
-```txt
-Task Tracker
-```
 
 ---
 
 ## ✅ Completed — Core SaaS Foundation
-
-### Multi-Tenancy
-
-* Organization model
-* Users scoped to organization
-* Orders scoped to organization
-* Workflows scoped to organization
-* JWT includes organizationId
-
-### Workflow System
-
-* Workflow / Status / Transition models
-* Status categories
-* Transition enforcement
-* Regression detection
-* Churn detection
-* Workflow validation rules
 
 ### Intelligence Engine
 
@@ -464,19 +255,9 @@ Task Tracker
 * stuck detection
 * regression tracking
 * churn tracking
+* assignment-aware intelligence
+* workload distribution tracking
+* imbalance detection
+* smart assignment suggestions
 * dashboard intelligence brief
-
-### Collaboration
-
-* comments
-* mentions
-* notifications
-
-### Organization Growth
-
-* invite system
-* invite acceptance flow
-* admin role assignment
-
----
-
+* recommended actions
