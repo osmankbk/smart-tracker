@@ -163,28 +163,28 @@ export default function DashboardPage() {
           </section>
 
           <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-            <h2 className="mb-4 text-xl font-semibold">Recommended Actions</h2>
-
-            <div className="space-y-3">
-              {brief.recommendations.map((recommendation) => (
-                <div
-                  key={`${recommendation.type}-${recommendation.message}`}
-                  className="rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-slate-300"
-                >
-                  <div className="mb-1 flex items-center justify-between gap-3">
-                    <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      {recommendation.type.replace('_', ' ')}
-                    </span>
-
-                    <span className="text-xs text-slate-500">
-                      Priority {recommendation.priority}
-                    </span>
-                  </div>
-
-                  <p>{recommendation.message}</p>
-                </div>
-              ))}
+            <div className="mb-4">
+              <h2 className="text-xl font-semibold">Recommended Next Steps</h2>
+              <p className="mt-1 text-sm text-slate-400">
+                Ranked by operational urgency and decision impact.
+              </p>
             </div>
+
+            {brief.recommendations.length === 0 ? (
+              <p className="text-slate-400">No recommendations right now.</p>
+            ) : (
+              <div className="space-y-3">
+                {brief.recommendations.map((recommendation) => (
+                  <RecommendationCard
+                    key={`${recommendation.type}-${recommendation.message}`}
+                    type={recommendation.type}
+                    message={recommendation.message}
+                    priority={recommendation.priority}
+                    confidence={recommendation.confidence}
+                  />
+                ))}
+              </div>
+            )}
           </section>
 
           <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
@@ -245,4 +245,54 @@ function MetricCard({ label, value }: { label: string; value: number }) {
       <p className="mt-2 text-3xl font-bold">{value}</p>
     </div>
   );
+}
+
+function RecommendationCard({
+  type,
+  message,
+  priority,
+  confidence,
+}: {
+  type: string;
+  message: string;
+  priority: number;
+  confidence?: number;
+}) {
+  const label = getRecommendationLabel(type);
+  const priorityLabel = getPriorityLabel(priority);
+
+  return (
+    <div className="rounded-xl border border-slate-800 bg-slate-950 px-4 py-4 text-sm text-slate-300">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="rounded-full border border-slate-700 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-300">
+            {label}
+          </span>
+
+          <span className="text-xs text-slate-500">{priorityLabel}</span>
+        </div>
+
+        <span className="text-xs text-slate-500">Priority {priority}</span>
+      </div>
+
+      <p className="leading-6 text-slate-200">{message}</p>
+
+      {typeof confidence === 'number' ? (
+        <p className="mt-2 text-xs text-slate-500">
+          Confidence: {Math.round(confidence * 100)}%
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function getRecommendationLabel(type: string) {
+  return type.replaceAll('_', ' ');
+}
+
+function getPriorityLabel(priority: number) {
+  if (priority >= 90) return 'Immediate attention';
+  if (priority >= 75) return 'High priority';
+  if (priority >= 50) return 'Worth reviewing';
+  return 'Monitor';
 }
