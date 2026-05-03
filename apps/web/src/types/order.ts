@@ -7,6 +7,13 @@ export type OrderPriority = 'LOW' | 'MEDIUM' | 'HIGH';
 
 export type RiskLevel = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 
+export type Recommendation = {
+  type: 'ASSIGN' | 'ESCALATE' | 'REVIEW' | 'REBALANCE' | 'INVESTIGATE';
+  message: string;
+  priority: number;
+  confidence?: number;
+};
+
 export type OrderUser = {
   id: string;
   name: string;
@@ -62,20 +69,25 @@ export type ActivityLog = {
 };
 
 export type OrderIntelligence = {
-  riskLevel: RiskLevel;
+  riskLevel: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
   riskScore: number;
+
   orderAgeMs: number;
   orderAgeHours: number;
+
   timeInCurrentStatusMs: number;
   timeInCurrentStatusHours: number;
+
   isStuck: boolean;
+
   reasons: string[];
-  recommendedActions: string[];
+  recommendations: Recommendation[];
+
   signals: {
-    status: OrderStatus;
+    status: string;
     statusLabel: string;
     statusCategory: string;
-    priority: OrderPriority;
+    priority: string;
     activityCount: number;
     statusChangeCount: number;
     regressionCount: number;
@@ -124,7 +136,7 @@ export type DashboardIntelligence = {
     isImbalanced: boolean;
   };
   focusOrders: DashboardOrderSignal[];
-  recommendedActions: string[];
+  recommendations: Recommendation[];
 };
 
 export type OrderAssignee = {

@@ -114,12 +114,12 @@ export function OrderIntelligencePanel({
         <div>
           <h3 className="mb-3 font-semibold">Recommended actions</h3>
           <ul className="space-y-2">
-            {intelligence.recommendedActions.map((action) => (
+            {intelligence.recommendations.map((action) => (
               <li
-                key={action}
+                key={action.message}
                 className="rounded-lg border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-slate-300"
               >
-                {action}
+                {action.message}
               </li>
             ))}
           </ul>

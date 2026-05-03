@@ -5,6 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 
 import { DashboardIntelligence } from './types/dashboard-intelligence.type';
 import { OrderIntelligence, RiskLevel } from './types/order-intelligence.type';
+import { Recommendation } from './types/recommendation.type';
 
 const STATUS_CHANGE_ACTIONS = ['STATUS_CHANGED', 'STATUS_REGRESSION'];
 const REGRESSION_ACTION = 'STATUS_REGRESSION';
@@ -234,7 +235,7 @@ export class IntelligenceService {
 
       focusOrders,
 
-      recommendedActions: this.buildDashboardRecommendations({
+      recommendations: this.buildDashboardRecommendations({
         stuckOrders: stuckOrders.length,
         highRiskOrders: highRiskOrders.length,
         criticalRiskOrders: criticalRiskOrders.length,
@@ -291,48 +292,83 @@ export class IntelligenceService {
     highRiskUnassignedOrders: number;
     isImbalanced: boolean;
     assignmentSuggestionCount: number;
-  }) {
-    const actions: string[] = [];
+  }): Recommendation[] {
+    const recommendations: Recommendation[] = [];
+
+    const addRecommendation = (recommendation: Recommendation) => {
+      const exists = recommendations.some(
+        (item) =>
+          item.type === recommendation.type &&
+          item.message === recommendation.message,
+      );
+
+      if (!exists) {
+        recommendations.push(recommendation);
+      }
+    };
 
     if (input.assignmentSuggestionCount > 0) {
-      actions.push(
-        'Review smart assignment suggestions for unassigned risk-bearing orders.',
-      );
+      addRecommendation({
+        type: 'ASSIGN',
+        message:
+          'Review smart assignment suggestions for unassigned risk-bearing orders.',
+        priority: 90,
+      });
     }
 
     if (input.highRiskUnassignedOrders > 0) {
-      actions.push(
-        'Assign owners to high-risk unassigned orders before reviewing lower-risk work.',
-      );
+      addRecommendation({
+        type: 'ASSIGN',
+        message:
+          'Assign owners to high-risk unassigned orders before reviewing lower-risk work.',
+        priority: 95,
+      });
     }
 
     if (input.isImbalanced) {
-      actions.push(
-        'Workload is unevenly distributed across team members. Consider rebalancing assignments.',
-      );
+      addRecommendation({
+        type: 'REBALANCE',
+        message:
+          'Workload is unevenly distributed across team members. Consider rebalancing assignments.',
+        priority: 80,
+      });
     }
 
     if (input.criticalRiskOrders > 0) {
-      actions.push('Review critical-risk orders before handling routine work.');
+      addRecommendation({
+        type: 'ESCALATE',
+        message: 'Review critical-risk orders before handling routine work.',
+        priority: 100,
+      });
     }
 
     if (input.highRiskOrders > 0) {
-      actions.push(
-        'Check high-risk orders for blockers, ownership, or escalation needs.',
-      );
+      addRecommendation({
+        type: 'REVIEW',
+        message:
+          'Check high-risk orders for blockers, ownership, or escalation needs.',
+        priority: 85,
+      });
     }
 
     if (input.stuckOrders > 0) {
-      actions.push('Review stuck orders and confirm the next required action.');
+      addRecommendation({
+        type: 'INVESTIGATE',
+        message: 'Review stuck orders and confirm the next required action.',
+        priority: 75,
+      });
     }
 
-    if (actions.length === 0) {
-      actions.push(
-        'Continue monitoring normal workflow and keep statuses updated.',
-      );
+    if (recommendations.length === 0) {
+      addRecommendation({
+        type: 'REVIEW',
+        message:
+          'Continue monitoring normal workflow and keep statuses updated.',
+        priority: 20,
+      });
     }
 
-    return actions;
+    return recommendations.sort((a, b) => b.priority - a.priority);
   }
 
   analyzeOrder(order: OrderLike): OrderIntelligence {
@@ -369,19 +405,21 @@ export class IntelligenceService {
     const timeInCurrentStatusHours = Math.round(timeInCurrentStatusMs / HOURS);
 
     const reasons: string[] = [];
-    const recommendedActions: string[] = [];
+    const recommendations: Recommendation[] = [];
+
+    function addRecommendation(rec: Recommendation) {
+      const exists = recommendations.find(
+        (r) => r.type === rec.type && r.message === rec.message,
+      );
+
+      if (!exists) {
+        recommendations.push(rec);
+      }
+    }
 
     let riskScore = 0;
 
     const isUnassigned = !order.assigneeId;
-
-    if (isUnassigned) {
-      riskScore += 10;
-
-      reasons.push('Order is currently unassigned.');
-
-      recommendedActions.push('Assign this order to a team member.');
-    }
 
     const isStuck = this.isOrderStuck(
       statusCategory,
@@ -391,18 +429,16 @@ export class IntelligenceService {
 
     if (isStuck) {
       riskScore += 40;
+
       reasons.push(
         `Order has been in ${statusLabel} for ${timeInCurrentStatusHours} hours.`,
       );
-      recommendedActions.push(
-        'Review the order for blockers and confirm the next owner.',
-      );
-    }
 
-    if (order.priority === OrderPriority.HIGH) {
-      riskScore += 25;
-      reasons.push('Order is marked HIGH priority.');
-      recommendedActions.push('Escalate visibility to a manager or lead.');
+      addRecommendation({
+        type: 'INVESTIGATE',
+        message: `Investigate why this order has been stuck in ${statusLabel}.`,
+        priority: 85,
+      });
     }
 
     if (isUnassigned && isStuck) {
@@ -410,47 +446,103 @@ export class IntelligenceService {
 
       reasons.push('Stuck order has no assigned owner.');
 
-      recommendedActions.push(
-        'Immediately assign an owner to unblock progress.',
-      );
+      addRecommendation({
+        type: 'ASSIGN',
+        message:
+          'Assign an owner immediately because this stuck order has no clear owner.',
+        priority: 95,
+      });
+    }
+
+    if (isUnassigned) {
+      riskScore += 10;
+
+      reasons.push('Order is currently unassigned.');
+
+      addRecommendation({
+        type: 'ASSIGN',
+        message: 'Assign an owner so this order has clear accountability.',
+        priority: 70,
+      });
+    }
+
+    if (order.priority === OrderPriority.HIGH) {
+      riskScore += 25;
+
+      reasons.push('Order is marked HIGH priority.');
+
+      addRecommendation({
+        type: 'ESCALATE',
+        message:
+          'Review this high-priority order and escalate if progress is blocked.',
+        priority: 90,
+      });
     }
 
     if (statusCategory === 'TODO' && timeInCurrentStatusHours >= 24) {
       riskScore += 20;
+
       reasons.push(
         `Order has remained in ${statusLabel} for at least 24 hours.`,
       );
-      recommendedActions.push('Assign the order or move it into active work.');
+
+      addRecommendation({
+        type: 'REVIEW',
+        message: `Review why this order has not moved past ${statusLabel}.`,
+        priority: 75,
+      });
     }
 
     if (statusCategory === 'ACTIVE' && timeInCurrentStatusHours >= 48) {
       riskScore += 30;
+
       reasons.push(`Order has been in ${statusLabel} for at least 48 hours.`);
-      recommendedActions.push('Check if the work is blocked or needs help.');
+
+      addRecommendation({
+        type: 'INVESTIGATE',
+        message: `Investigate blockers preventing progress from ${statusLabel}.`,
+        priority: 85,
+      });
     }
 
     if (statusCategory === 'REVIEW' && timeInCurrentStatusHours >= 36) {
       riskScore += 25;
+
       reasons.push(
         `Order has been waiting in ${statusLabel} for at least 36 hours.`,
       );
-      recommendedActions.push(
-        'Confirm who owns the review and whether a decision is needed.',
-      );
+
+      addRecommendation({
+        type: 'REVIEW',
+        message: `Review approval or handoff delays in ${statusLabel}.`,
+        priority: 80,
+      });
     }
 
     if (statusCategory === 'QA' && timeInCurrentStatusHours >= 36) {
       riskScore += 25;
+
       reasons.push(`Order has been in ${statusLabel} for at least 36 hours.`);
-      recommendedActions.push(
-        'Check QA blockers and confirm expected completion timing.',
-      );
+
+      addRecommendation({
+        type: 'REVIEW',
+        message:
+          'Review QA delays and confirm what is needed to complete this order.',
+        priority: 80,
+      });
     }
 
     if (order.activityLogs.length === 0 && timeInCurrentStatusHours >= 24) {
       riskScore += 15;
+
       reasons.push('Order has no recorded activity after creation.');
-      recommendedActions.push('Add an update or confirm whether work started.');
+
+      addRecommendation({
+        type: 'INVESTIGATE',
+        message:
+          'Investigate why no activity has been recorded after creation.',
+        priority: 70,
+      });
     }
 
     if (regressionCount > 0) {
@@ -462,9 +554,12 @@ export class IntelligenceService {
         `Order has regressed ${regressionCount} time(s), indicating possible rework or unclear requirements.`,
       );
 
-      recommendedActions.push(
-        'Review why the order moved backward and clarify the next required step.',
-      );
+      addRecommendation({
+        type: 'REVIEW',
+        message:
+          'Review recent regression to identify rework or unclear requirements.',
+        priority: 80,
+      });
     }
 
     if (churnCount >= 3) {
@@ -474,9 +569,12 @@ export class IntelligenceService {
         `Order has high workflow churn with ${statusChangeCount} status movement(s).`,
       );
 
-      recommendedActions.push(
-        'Confirm ownership and reduce unnecessary status cycling.',
-      );
+      addRecommendation({
+        type: 'INVESTIGATE',
+        message:
+          'Investigate repeated status movement and possible workflow confusion.',
+        priority: 78,
+      });
     } else if (churnCount >= 1) {
       riskScore += 10;
 
@@ -484,25 +582,38 @@ export class IntelligenceService {
         `Order has changed status ${statusChangeCount} time(s), suggesting some workflow instability.`,
       );
 
-      recommendedActions.push(
-        'Check whether the workflow path is clear for this order.',
-      );
+      addRecommendation({
+        type: 'REVIEW',
+        message:
+          'Review recent status movement for signs of workflow instability.',
+        priority: 65,
+      });
     }
 
     if (statusCategory === 'DONE') {
       riskScore = Math.min(riskScore, 10);
+
       reasons.push(`Order is in terminal status ${statusLabel}.`);
-      recommendedActions.push(
-        'No action needed unless an admin override is required.',
-      );
+
+      addRecommendation({
+        type: 'REVIEW',
+        message:
+          'No action needed unless this order must be reopened by an admin.',
+        priority: 10,
+      });
     }
 
     if (statusCategory === 'CANCELED') {
       riskScore = Math.min(riskScore, 10);
+
       reasons.push(`Order is canceled in status ${statusLabel}.`);
-      recommendedActions.push(
-        'No action needed unless an admin override is required.',
-      );
+
+      addRecommendation({
+        type: 'REVIEW',
+        message:
+          'No action needed unless this cancellation needs review or reversal.',
+        priority: 10,
+      });
     }
 
     if (
@@ -512,9 +623,11 @@ export class IntelligenceService {
     ) {
       reasons.push('High-risk order is not owned by anyone.');
 
-      recommendedActions.push(
-        'Assign ownership immediately to reduce operational risk.',
-      );
+      addRecommendation({
+        type: 'ASSIGN',
+        message: 'Assign ownership before escalating this high-risk order.',
+        priority: 100,
+      });
     }
 
     riskScore = Math.min(riskScore, 100);
@@ -523,10 +636,17 @@ export class IntelligenceService {
       reasons.push('No major lifecycle risks detected.');
     }
 
-    if (recommendedActions.length === 0) {
-      recommendedActions.push('Continue monitoring normally.');
+    if (recommendations.length === 0) {
+      addRecommendation({
+        type: 'REVIEW',
+        message: 'Continue monitoring this order normally.',
+        priority: 20,
+      });
     }
-    const uniqueRecommendedActions = Array.from(new Set(recommendedActions));
+
+    const sortedRecommendations = [...recommendations].sort(
+      (a, b) => b.priority - a.priority,
+    );
 
     return {
       riskLevel: this.getRiskLevel(riskScore),
@@ -537,7 +657,7 @@ export class IntelligenceService {
       timeInCurrentStatusHours,
       isStuck,
       reasons,
-      recommendedActions: uniqueRecommendedActions,
+      recommendations: sortedRecommendations,
       signals: {
         status: order.status,
         statusLabel,

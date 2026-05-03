@@ -166,12 +166,22 @@ export default function DashboardPage() {
             <h2 className="mb-4 text-xl font-semibold">Recommended Actions</h2>
 
             <div className="space-y-3">
-              {brief.recommendedActions.map((action) => (
+              {brief.recommendations.map((recommendation) => (
                 <div
-                  key={action}
+                  key={`${recommendation.type}-${recommendation.message}`}
                   className="rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-slate-300"
                 >
-                  {action}
+                  <div className="mb-1 flex items-center justify-between gap-3">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      {recommendation.type.replace('_', ' ')}
+                    </span>
+
+                    <span className="text-xs text-slate-500">
+                      Priority {recommendation.priority}
+                    </span>
+                  </div>
+
+                  <p>{recommendation.message}</p>
                 </div>
               ))}
             </div>

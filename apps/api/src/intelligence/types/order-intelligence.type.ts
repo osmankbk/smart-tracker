@@ -1,4 +1,5 @@
 import { OrderPriority, OrderStatus } from '@prisma/client';
+import { Recommendation } from './recommendation.type';
 
 export type RiskLevel = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 
@@ -11,7 +12,7 @@ export type OrderIntelligence = {
   timeInCurrentStatusHours: number;
   isStuck: boolean;
   reasons: string[];
-  recommendedActions: string[];
+  recommendations: Recommendation[];
   signals: {
     status: OrderStatus;
     statusLabel: string;

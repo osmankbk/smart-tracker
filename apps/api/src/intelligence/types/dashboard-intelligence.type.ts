@@ -1,4 +1,5 @@
 import { OrderIntelligence } from './order-intelligence.type';
+import { Recommendation } from './recommendation.type';
 
 export type DashboardOrderSignal = {
   id: string;
@@ -26,7 +27,7 @@ export type DashboardIntelligence = {
     highRiskUnassignedOrders: number;
   };
   focusOrders: DashboardOrderSignal[];
-  recommendedActions: string[];
+  recommendations: Recommendation[];
 
   workload: {
     assigneeId: string;
