@@ -64,6 +64,23 @@ export class IntelligenceService {
     return category === 'DONE' || category === 'CANCELED';
   }
 
+  private addRecommendation(
+    recommendations: Recommendation[],
+    recommendation: Recommendation,
+  ) {
+    const exists = recommendations.some(
+      (item) =>
+        item.type === recommendation.type &&
+        item.message === recommendation.message,
+    );
+
+    if (!exists) {
+      recommendations.push(recommendation);
+    }
+  }
+  private sortRecommendations(recommendations: Recommendation[]) {
+    return [...recommendations].sort((a, b) => b.priority - a.priority);
+  }
   async getDashboardBrief(
     organizationId: string | null,
   ): Promise<DashboardIntelligence> {
@@ -295,20 +312,8 @@ export class IntelligenceService {
   }): Recommendation[] {
     const recommendations: Recommendation[] = [];
 
-    const addRecommendation = (recommendation: Recommendation) => {
-      const exists = recommendations.some(
-        (item) =>
-          item.type === recommendation.type &&
-          item.message === recommendation.message,
-      );
-
-      if (!exists) {
-        recommendations.push(recommendation);
-      }
-    };
-
     if (input.assignmentSuggestionCount > 0) {
-      addRecommendation({
+      this.addRecommendation(recommendations, {
         type: 'ASSIGN',
         message:
           'Review smart assignment suggestions for unassigned risk-bearing orders.',
@@ -317,7 +322,7 @@ export class IntelligenceService {
     }
 
     if (input.highRiskUnassignedOrders > 0) {
-      addRecommendation({
+      this.addRecommendation(recommendations, {
         type: 'ASSIGN',
         message:
           'Assign owners to high-risk unassigned orders before reviewing lower-risk work.',
@@ -326,7 +331,7 @@ export class IntelligenceService {
     }
 
     if (input.isImbalanced) {
-      addRecommendation({
+      this.addRecommendation(recommendations, {
         type: 'REBALANCE',
         message:
           'Workload is unevenly distributed across team members. Consider rebalancing assignments.',
@@ -335,7 +340,7 @@ export class IntelligenceService {
     }
 
     if (input.criticalRiskOrders > 0) {
-      addRecommendation({
+      this.addRecommendation(recommendations, {
         type: 'ESCALATE',
         message: 'Review critical-risk orders before handling routine work.',
         priority: 100,
@@ -343,7 +348,7 @@ export class IntelligenceService {
     }
 
     if (input.highRiskOrders > 0) {
-      addRecommendation({
+      this.addRecommendation(recommendations, {
         type: 'REVIEW',
         message:
           'Check high-risk orders for blockers, ownership, or escalation needs.',
@@ -352,7 +357,7 @@ export class IntelligenceService {
     }
 
     if (input.stuckOrders > 0) {
-      addRecommendation({
+      this.addRecommendation(recommendations, {
         type: 'INVESTIGATE',
         message: 'Review stuck orders and confirm the next required action.',
         priority: 75,
@@ -360,7 +365,7 @@ export class IntelligenceService {
     }
 
     if (recommendations.length === 0) {
-      addRecommendation({
+      this.addRecommendation(recommendations, {
         type: 'REVIEW',
         message:
           'Continue monitoring normal workflow and keep statuses updated.',
@@ -368,7 +373,7 @@ export class IntelligenceService {
       });
     }
 
-    return recommendations.sort((a, b) => b.priority - a.priority);
+    return this.sortRecommendations(recommendations);
   }
 
   analyzeOrder(order: OrderLike): OrderIntelligence {
@@ -407,16 +412,6 @@ export class IntelligenceService {
     const reasons: string[] = [];
     const recommendations: Recommendation[] = [];
 
-    function addRecommendation(rec: Recommendation) {
-      const exists = recommendations.find(
-        (r) => r.type === rec.type && r.message === rec.message,
-      );
-
-      if (!exists) {
-        recommendations.push(rec);
-      }
-    }
-
     let riskScore = 0;
 
     const isUnassigned = !order.assigneeId;
@@ -434,7 +429,7 @@ export class IntelligenceService {
         `Order has been in ${statusLabel} for ${timeInCurrentStatusHours} hours.`,
       );
 
-      addRecommendation({
+      this.addRecommendation(recommendations, {
         type: 'INVESTIGATE',
         message: `Investigate why this order has been stuck in ${statusLabel}.`,
         priority: 85,
@@ -446,7 +441,7 @@ export class IntelligenceService {
 
       reasons.push('Stuck order has no assigned owner.');
 
-      addRecommendation({
+      this.addRecommendation(recommendations, {
         type: 'ASSIGN',
         message:
           'Assign an owner immediately because this stuck order has no clear owner.',
@@ -459,7 +454,7 @@ export class IntelligenceService {
 
       reasons.push('Order is currently unassigned.');
 
-      addRecommendation({
+      this.addRecommendation(recommendations, {
         type: 'ASSIGN',
         message: 'Assign an owner so this order has clear accountability.',
         priority: 70,
@@ -471,7 +466,7 @@ export class IntelligenceService {
 
       reasons.push('Order is marked HIGH priority.');
 
-      addRecommendation({
+      this.addRecommendation(recommendations, {
         type: 'ESCALATE',
         message:
           'Review this high-priority order and escalate if progress is blocked.',
@@ -486,7 +481,7 @@ export class IntelligenceService {
         `Order has remained in ${statusLabel} for at least 24 hours.`,
       );
 
-      addRecommendation({
+      this.addRecommendation(recommendations, {
         type: 'REVIEW',
         message: `Review why this order has not moved past ${statusLabel}.`,
         priority: 75,
@@ -498,7 +493,7 @@ export class IntelligenceService {
 
       reasons.push(`Order has been in ${statusLabel} for at least 48 hours.`);
 
-      addRecommendation({
+      this.addRecommendation(recommendations, {
         type: 'INVESTIGATE',
         message: `Investigate blockers preventing progress from ${statusLabel}.`,
         priority: 85,
@@ -512,7 +507,7 @@ export class IntelligenceService {
         `Order has been waiting in ${statusLabel} for at least 36 hours.`,
       );
 
-      addRecommendation({
+      this.addRecommendation(recommendations, {
         type: 'REVIEW',
         message: `Review approval or handoff delays in ${statusLabel}.`,
         priority: 80,
@@ -524,7 +519,7 @@ export class IntelligenceService {
 
       reasons.push(`Order has been in ${statusLabel} for at least 36 hours.`);
 
-      addRecommendation({
+      this.addRecommendation(recommendations, {
         type: 'REVIEW',
         message:
           'Review QA delays and confirm what is needed to complete this order.',
@@ -537,7 +532,7 @@ export class IntelligenceService {
 
       reasons.push('Order has no recorded activity after creation.');
 
-      addRecommendation({
+      this.addRecommendation(recommendations, {
         type: 'INVESTIGATE',
         message:
           'Investigate why no activity has been recorded after creation.',
@@ -554,7 +549,7 @@ export class IntelligenceService {
         `Order has regressed ${regressionCount} time(s), indicating possible rework or unclear requirements.`,
       );
 
-      addRecommendation({
+      this.addRecommendation(recommendations, {
         type: 'REVIEW',
         message:
           'Review recent regression to identify rework or unclear requirements.',
@@ -569,7 +564,7 @@ export class IntelligenceService {
         `Order has high workflow churn with ${statusChangeCount} status movement(s).`,
       );
 
-      addRecommendation({
+      this.addRecommendation(recommendations, {
         type: 'INVESTIGATE',
         message:
           'Investigate repeated status movement and possible workflow confusion.',
@@ -582,7 +577,7 @@ export class IntelligenceService {
         `Order has changed status ${statusChangeCount} time(s), suggesting some workflow instability.`,
       );
 
-      addRecommendation({
+      this.addRecommendation(recommendations, {
         type: 'REVIEW',
         message:
           'Review recent status movement for signs of workflow instability.',
@@ -595,7 +590,7 @@ export class IntelligenceService {
 
       reasons.push(`Order is in terminal status ${statusLabel}.`);
 
-      addRecommendation({
+      this.addRecommendation(recommendations, {
         type: 'REVIEW',
         message:
           'No action needed unless this order must be reopened by an admin.',
@@ -608,7 +603,7 @@ export class IntelligenceService {
 
       reasons.push(`Order is canceled in status ${statusLabel}.`);
 
-      addRecommendation({
+      this.addRecommendation(recommendations, {
         type: 'REVIEW',
         message:
           'No action needed unless this cancellation needs review or reversal.',
@@ -623,7 +618,7 @@ export class IntelligenceService {
     ) {
       reasons.push('High-risk order is not owned by anyone.');
 
-      addRecommendation({
+      this.addRecommendation(recommendations, {
         type: 'ASSIGN',
         message: 'Assign ownership before escalating this high-risk order.',
         priority: 100,
@@ -637,16 +632,14 @@ export class IntelligenceService {
     }
 
     if (recommendations.length === 0) {
-      addRecommendation({
+      this.addRecommendation(recommendations, {
         type: 'REVIEW',
         message: 'Continue monitoring this order normally.',
         priority: 20,
       });
     }
 
-    const sortedRecommendations = [...recommendations].sort(
-      (a, b) => b.priority - a.priority,
-    );
+    const sortedRecommendations = this.sortRecommendations(recommendations);
 
     return {
       riskLevel: this.getRiskLevel(riskScore),
