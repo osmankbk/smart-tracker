@@ -144,24 +144,32 @@ export class IntelligenceService {
       )
       .slice(0, 5)
       .map((order) => {
-        const suggestedAssignee = availableMembers[0];
-
-        if (!suggestedAssignee) {
+        if (availableMembers.length === 0) {
           return null;
         }
+
+        const scoredMembers = availableMembers.map((member) => ({
+          ...member,
+          score: this.scoreAssignmentCandidate(
+            member,
+            order.intelligence.riskLevel,
+          ),
+        }));
+
+        const bestCandidate = scoredMembers.sort(
+          (a, b) => b.score - a.score,
+        )[0];
 
         return {
           orderId: order.id,
           orderTitle: order.title,
-          suggestedAssigneeId: suggestedAssignee.assigneeId,
-          suggestedAssigneeName: suggestedAssignee.assigneeName,
-          suggestedAssigneeEmail: suggestedAssignee.assigneeEmail,
-          reason: `${suggestedAssignee.assigneeName} currently has the lightest workload with ${suggestedAssignee.count} assigned order(s).`,
+          suggestedAssigneeId: bestCandidate.assigneeId,
+          suggestedAssigneeName: bestCandidate.assigneeName,
+          suggestedAssigneeEmail: bestCandidate.assigneeEmail,
+          reason: `${bestCandidate.assigneeName} has one of the lowest workloads and is a good candidate for this assignment.`,
         };
       })
-      .filter((suggestion): suggestion is NonNullable<typeof suggestion> =>
-        Boolean(suggestion),
-      );
+      .filter((s): s is NonNullable<typeof s> => Boolean(s));
 
     const stuckOrders = analyzedOrders.filter(
       (order) => order.intelligence.isStuck,
@@ -595,5 +603,32 @@ export class IntelligenceService {
     if (score >= 50) return 'HIGH';
     if (score >= 25) return 'MEDIUM';
     return 'LOW';
+  }
+
+  private scoreAssignmentCandidate(
+    member: {
+      assigneeId: string;
+      assigneeName: string;
+      assigneeEmail: string;
+      count: number;
+    },
+    orderRiskLevel: RiskLevel,
+  ) {
+    let score = 0;
+
+    // 1. Workload (lower is better)
+    score += Math.max(0, 10 - member.count * 2);
+
+    // 2. Slight boost for completely free users
+    if (member.count === 0) {
+      score += 5;
+    }
+
+    // 3. Risk-aware adjustment
+    if (orderRiskLevel === 'HIGH' || orderRiskLevel === 'CRITICAL') {
+      score += Math.max(0, 5 - member.count);
+    }
+
+    return score;
   }
 }
